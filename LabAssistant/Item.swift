@@ -44,13 +44,14 @@ final class Chemical {
     var tags : [Tag] = []
     var units: Units
     
-    init(nickname: String, expriryDate: Date? = nil, max: Double, current: Double, notes: String? = nil) {
+    init(nickname: String, expriryDate: Date? = nil, max: Double, current: Double, notes: String? = nil, tags: [Tag] = [], units: Units = .ml) {
         self.nickname = nickname
         self.expriryDate = expriryDate
         self.max = max
         self.current = current
         self.notes = notes
-        self.units = .ml
+        self.tags = tags
+        self.units = units
     }
     
     enum Units: String, Codable, CaseIterable {
@@ -59,7 +60,7 @@ final class Chemical {
     
 }
 
-final class Tag : Identifiable, Codable {
+final class Tag : Identifiable, Codable, Equatable {
     var title: String
     var storedColor: NamedColor
     

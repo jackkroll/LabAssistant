@@ -11,6 +11,7 @@ import SwiftData
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Chemical]
+    @State var showAddChemicalSheet : Bool = false
 
     var body: some View {
         NavigationSplitView {
@@ -29,17 +30,25 @@ struct ContentView: View {
                 }
                 .onDelete(perform: deleteItems)
             }
+            .sheet(isPresented: $showAddChemicalSheet) {
+                AddChemicalSheet()
+                    .presentationDetents([.large])
+                    .interactiveDismissDisabled()
+            }
             .scrollContentBackground(.hidden)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     EditButton()
                 }
                 ToolbarItem {
-                    Button(action: addItem) {
+                    Button{
+                        showAddChemicalSheet = true
+                    } label: {
                         Label("Add Item", systemImage: "plus")
                     }
                 }
             }
+            
         } detail: {
             Text("Select an item")
         }
