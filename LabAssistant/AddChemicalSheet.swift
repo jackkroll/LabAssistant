@@ -24,7 +24,7 @@ struct AddChemicalSheet: View {
     @Namespace private var tagNamespace
     @State private var usesOtherChemical: Bool = false
     
-    @Query(sort: [SortDescriptor(\Chemical.nickname, order: .forward)]) private var allChemicals: [Chemical]
+    @Query(filter: #Predicate { $0.current > 0},sort: [SortDescriptor(\Chemical.nickname, order: .forward)]) private var allChemicals: [Chemical]
     @State private var isMixtureExpanded: Bool = false
     @State private var selectedComponent: Chemical? = nil
     @State private var selectedComponentAmount: Double? = nil
@@ -38,7 +38,8 @@ struct AddChemicalSheet: View {
         maxAmount! <= 0 ||
         currentAmount! < 0 ||
         currentAmount! > maxAmount! ||
-        mixtureComponents.contains { $0.amount <= 0 }
+        mixtureComponents.contains { $0.amount <= 0 } ||
+        !(mixtureComponents.allSatisfy( { $0.chemical.current >= $0.amount }) )
     }
     
     var body: some View {
@@ -80,7 +81,7 @@ struct AddChemicalSheet: View {
                         .animation(.default, value: hasExpiry)
                     
                     if hasExpiry {
-                        DatePicker("Expiry", selection: $expiryDate, displayedComponents: .date)
+                        DatePicker("Expiry", selection: $expiryDate, in: Date.now..., displayedComponents: .date)
                     }
                 } header: {
                     Text("Expiration")
@@ -120,7 +121,7 @@ struct AddChemicalSheet: View {
                             .frame(maxWidth: .infinity)
                             .buttonStyle(.bordered)
                             .buttonBorderShape(.capsule)
-                            .disabled(selectedComponent == nil || (selectedComponentAmount ?? 0) <= 0)
+                            .disabled(selectedComponent == nil || (selectedComponentAmount ?? 0) <= 0 || selectedComponentAmount ?? .infinity > selectedComponent!.current)
 
                             if !mixtureComponents.isEmpty {
                                 Divider()
@@ -145,7 +146,7 @@ struct AddChemicalSheet: View {
                         }
                         .padding(.vertical, 4)
                     } label: {
-                        Label("Mixture", systemImage: "drop.halffull")
+                        Label("Create Mixture", systemImage: "drop.halffull")
                             .labelStyle(.titleOnly)
                     }
                 } footer: {
@@ -251,8 +252,16 @@ struct AddChemicalSheet: View {
                         if chemicalToAdd != nil {
                             // Persist to SwiftData
                             modelContext.insert(chemicalToAdd!)
+                            for (chemical,amount) in mixtureComponents {
+                                chemical.current-=amount
+                                // Prevent negative amounts, but this case is save disabled
+                                if chemical.current < 0 {
+                                    chemical.current = 0
+                                }
+                            }
                             do {
                                 try modelContext.save()
+                                
                             } catch {
                                 modelContext.delete(chemicalToAdd!)
                             }
