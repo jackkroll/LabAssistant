@@ -10,6 +10,10 @@ import SwiftUI
 struct RatioCalc: View {
     @State private var workingVolume: String = ""
     @State private var ratioX: String = ""
+    @Binding var selectedComponantAmount: Double?
+    
+    @State var partA: Double? = nil
+    @State var partB: Double? = nil
     
     var body: some View {
         NavigationStack {
@@ -26,23 +30,58 @@ struct RatioCalc: View {
                             .keyboardType(.decimalPad)
                     }
                 }
-                if let total = Double(workingVolume),
-                   let x = Double(ratioX),
-                   x > 0 {
-                    let partA = total / (x + 1)
-                    let partB = partA * x
-                    Section(header: Text("Component Breakdown")) {
-                        Text("Part A: \(String(format: "%.2f", partA))")
-                        Text("Part B: \(String(format: "%.2f", partB))")
+                
+                
+                Section(header: Text("Component Breakdown")) {
+                    HStack {
+                        Text("Part A: \(String(format: "%.3f", partA ?? 0))")
+                            .contentTransition(.numericText())
+                        Spacer()
+                        Button("Add to mixture"){
+                            selectedComponantAmount = partA
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!isValid())
+                        
                     }
-                    
+                    HStack {
+                        Text("Part B: \(String(format: "%.3f", partB ?? 0))")
+                            .contentTransition(.numericText())
+                        Spacer()
+                        Button("Add to mixture"){
+                            selectedComponantAmount = partB
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(!isValid())
+                    }
                 }
+                .onChange(of: workingVolume + ratioX) {
+                    if let total = Double(workingVolume),
+                       let x = Double(ratioX),
+                       x > 0 {
+                        withAnimation{
+                            partA = total / (x + 1)
+                            partB = partA! * x
+                        }
+                    }
+                    else {
+                        withAnimation{
+                            partA = 0
+                            partB = 0
+                        }
+                    }
+                }
+                
+                
             }
-            .navigationTitle("Ratio Calculator")
         }
+    }
+    
+    func isValid() -> Bool {
+        return (Double(workingVolume) != nil) && (Double(ratioX) != nil) && (Double(ratioX)! > 0)
     }
 }
 
 #Preview {
-    RatioCalc()
+    RatioCalc(selectedComponantAmount: .constant(nil))
 }

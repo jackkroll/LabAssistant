@@ -30,6 +30,8 @@ struct AddChemicalSheet: View {
     @State private var selectedComponentAmount: Double? = nil
     @State private var mixtureComponents: [(chemical: Chemical, amount: Double)] = []
     
+    @State var showRatioCalculator: Bool = false
+    
     private var isSaveDisabled: Bool {
         // All cases that aren't allowed
         maxAmount == nil ||
@@ -270,6 +272,30 @@ struct AddChemicalSheet: View {
                     }
                     .disabled(isSaveDisabled)
                 }
+                
+                ToolbarItemGroup(placement: .automatic){
+                    Button("1:X") {
+                        showRatioCalculator = true
+                    }
+                    .sheet(isPresented: $showRatioCalculator, content: {
+                        RatioCalc(selectedComponantAmount: $selectedComponentAmount)
+                            .onChange(of: selectedComponentAmount) {
+                                if !isMixtureExpanded {
+                                    withAnimation {
+                                        isMixtureExpanded = true
+                                    }
+                                }
+                                if showRatioCalculator {
+                                    withAnimation {
+                                        showRatioCalculator = false
+                                    }
+                                }
+                                
+                            }
+                            .presentationDetents([.medium])
+                    })
+                }
+                
                 ToolbarItem(placement: .cancellationAction){
                     Button(role: .cancel) {
                         dismiss()
@@ -410,10 +436,3 @@ struct AddChemicalSheet: View {
             .modelContainer(for: Chemical.self, inMemory: true)
     }
 }
-
-// MARK: - Notes
-// This view expects the `Chemical` model to provide:
-// 1) An identifiable/persistent identifier (`persistentModelID` or `_persistentIdentifier`) to reference components.
-// 2) A nested `Component` value type with fields: `sourceID`, `amount`, and `units` compatible with `Chemical.Units`.
-// If your `Chemical` model differs, adjust the mapping in `newChemical()` accordingly.
-
