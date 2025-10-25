@@ -77,3 +77,62 @@ final class Tag : Identifiable, Codable, Equatable {
         lhs.title == rhs.title
     }
 }
+
+@Model
+final class DevProcess {
+    var nickname : String
+    var notes: String
+    var steps: [SingleStep]
+    var sortedSteps : [SingleStep] {
+        get {
+            return steps.sorted(by: {$0.index < $1.index})
+        }
+        set {
+            steps = newValue
+        }
+    }
+    
+    init(nickname: String, notes: String = "", steps: [SingleStep]) {
+        self.nickname = nickname
+        self.notes = notes
+        self.steps = steps
+    }
+    
+}
+
+@Model
+final class SingleStep: Identifiable {
+    var id : UUID
+    var index: Int
+    var title: String
+    var notes: String
+    var autoAdvance: Bool
+    var associatedChemicals: [Chemical]
+
+    var totalDuration: TimeInterval?
+    var substep: SubstepProcess?
+    
+    init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, substep: SubstepProcess? = nil) {
+        self.id = UUID()
+        self.title = title
+        self.index = index
+        self.notes = notes
+        self.autoAdvance = autoAdvance
+        self.associatedChemicals = associatedChemicals
+        self.totalDuration = totalDuration
+        self.substep = substep
+    }
+}
+
+@Model
+final class SubstepProcess {
+    var title: String
+    var duration: TimeInterval
+    var gap: TimeInterval
+    
+    init(title: String, duration: TimeInterval, gap: TimeInterval) {
+        self.title = title
+        self.duration = duration
+        self.gap = gap
+    }
+}
