@@ -8,38 +8,49 @@
 import SwiftUI
 import SwiftData
 
-struct ContentView: View {
+struct ChemicalStorageView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Chemical]
     @State var showAddChemicalSheet : Bool = false
 
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(items) { item in
-                    NavigationLink {
-                        VStack {
-                            Text(item.nickname)
-                            Gauge(value: item.current, in: 0...item.max) {
-                                Label("\(item.current)/\(item.max)", systemImage: "flask")
-                            }
-                        }
-                    } label: {
-                        ChemCard(chem: item)
+        NavigationStack {
+            VStack {
+                if items.count == 0 {
+                    ContentUnavailableView {
+                        Label("No chemicals saved", systemImage: "flask")
+                    } description: {
+                        Text("Create a new one!")
                     }
                 }
-                .onDelete(perform: deleteItems)
+                else {
+                    List {
+                        ForEach(items) { item in
+                            NavigationLink {
+                                VStack {
+                                    Text(item.nickname)
+                                    Gauge(value: item.current, in: 0...item.max) {
+                                        Label("\(item.current)/\(item.max)", systemImage: "flask")
+                                    }
+                                }
+                            } label: {
+                                ChemCard(chem: item)
+                            }
+                        }
+                        .onDelete(perform: deleteItems)
+                    }
+                    
+                    .scrollContentBackground(.hidden)
+                }
+                
+                
             }
             .sheet(isPresented: $showAddChemicalSheet) {
                 AddChemicalSheet()
                     .presentationDetents([.large])
                     .interactiveDismissDisabled()
             }
-            .scrollContentBackground(.hidden)
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
                 ToolbarItem {
                     Button{
                         showAddChemicalSheet = true
@@ -48,9 +59,6 @@ struct ContentView: View {
                     }
                 }
             }
-            
-        } detail: {
-            Text("Select an item")
         }
     }
 
@@ -137,6 +145,6 @@ struct ChemCard: View {
 }
 
 #Preview {
-    ContentView()
+    ChemicalStorageView()
         .modelContainer(for: Chemical.self, inMemory: true)
 }

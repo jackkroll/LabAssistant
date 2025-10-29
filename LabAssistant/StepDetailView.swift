@@ -112,11 +112,6 @@ struct StepDetailView: View {
         }
         .navigationTitle("Edit Step")
         .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Done") { dismiss() }
-            }
-        }
         .sheet(isPresented: $isEditingSubstep) {
             NavigationStack {
                 if let _ = step.substep {

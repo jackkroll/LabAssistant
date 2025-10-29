@@ -31,15 +31,23 @@ struct DevelopView: View {
                         Text(step.title)
                             .fontWeight(.bold)
                             .font(.largeTitle)
+                        if step.associatedChemicals.count > 0 {
+                            HStack {
+                                ForEach(step.associatedChemicals) { chemical in
+                                    TagRender(tag: Tag(title: chemical.nickname))
+                                }
+                            }
+                        }
                         Text(step.notes)
                             .fontWeight(.semibold)
                             .font(.title2)
+                        
                     }
                     
                     if timeRemaining != nil  || subprocessTimeRemaining != nil {
                         OrientationAdaptiveStack {
                             if timeRemaining != nil {
-                                Text(formatSecondsToMinutesSeconds(Int(timeRemaining!)))
+                                Text(timeRemaining!.formatToMinSec())
                                     .contentTransition(.numericText(countsDown: true))
                                     .font(.system(size: 100, weight: .black, design: .monospaced))
                                     .minimumScaleFactor(0.01)
@@ -57,14 +65,14 @@ struct DevelopView: View {
                                             .fontWeight(.semibold)
                                         if subprocessTimeRemaining != nil && subprocessTimeRemaining! > 0 {
                                             HStack {
-                                                Text(formatSecondsToMinutesSeconds(Int(subprocessTimeRemaining!)))
+                                                Text(subprocessTimeRemaining!.formatToMinSec())
                                                     .contentTransition(.numericText(countsDown: true))
                                                     .font(.system(size: 50, weight: .bold, design: .monospaced))
                                                     .padding()
                                             }
                                         }
                                         else if subprocessBufferRemaining != nil && subprocessBufferRemaining! > 0 {
-                                            Text(formatSecondsToMinutesSeconds(Int(subprocessBufferRemaining!)))
+                                            Text(subprocessBufferRemaining!.formatToMinSec())
                                                 .contentTransition(.numericText(countsDown: true))
                                                 .font(.system(size: 50, weight: .bold, design: .default))
                                                 .padding()
@@ -78,68 +86,9 @@ struct DevelopView: View {
                             //Spacer()
                         }
                     }
-            
-                    
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .safeAreaInset(edge: .bottom) {
-                    HStack {
-                        Button {
-                            withAnimation {
-                                selectedTab -= 1
-                            }
-                        } label: {
-                            Image(systemName: "arrow.left.circle.fill")
-                                .symbolRenderingMode(.hierarchical)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 75, height: 75)
-                                .contentTransition(.symbolEffect(.replace))
-                        }
-                        .disabled(step.index == 0)
-                        
-                        Spacer()
-                        
-                        if step.totalDuration != nil || step.substep?.duration != nil {
-                            Button {
-                                if isPaused {
-                                    generateNewTimer(newStep: step)
-                                }
-                                else {
-                                    timer?.invalidate()
-                                }
-                                isPaused.toggle()
-                            } label: {
-                                Image(systemName: isPaused ? "play.circle.fill" : "pause.circle.fill")
-                                    .symbolRenderingMode(.hierarchical)
-                                    .resizable()
-                                    .scaledToFit()
-                                    .frame(width: 75, height: 75)
-                                    .contentTransition(.symbolEffect(.replace))
-                            }
-                        }
-                        
-                        
-                        Spacer()
-                        
-                        Button {
-                            withAnimation {
-                                selectedTab += 1
-                            }
-                        } label: {
-                            Image(systemName: "arrow.right.circle.fill")
-                                .symbolRenderingMode(.hierarchical)
-                                .resizable()
-                                .scaledToFit()
-                                .frame(width: 75, height: 75)
-                        }
-                        .disabled(selectedTab == process.sortedSteps.count - 1)
-                    }
-                    .padding()
                 }
                 .tag(step.index)
-                
-            }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationBarTitleDisplayMode(.inline)
         .onChange(of: selectedTab) {
@@ -155,8 +104,67 @@ struct DevelopView: View {
                 generateNewTimer(newStep: newStep)
             }
         }
-        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        
     }
+        .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        .safeAreaInset(edge: .bottom) {
+            let step = process.sortedSteps[selectedTab]
+                HStack {
+                    Button {
+                        withAnimation {
+                            selectedTab -= 1
+                        }
+                    } label: {
+                        Image(systemName: "arrow.left.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 75, height: 75)
+                            .contentTransition(.symbolEffect(.replace))
+                    }
+                    .disabled(step.index == 0)
+                    
+                    Spacer()
+                    
+                    if step.totalDuration != nil || step.substep?.duration != nil {
+                        Button {
+                            if isPaused {
+                                generateNewTimer(newStep: step)
+                            }
+                            else {
+                                timer?.invalidate()
+                            }
+                            isPaused.toggle()
+                        } label: {
+                            Image(systemName: isPaused ? "play.circle.fill" : "pause.circle.fill")
+                                .symbolRenderingMode(.hierarchical)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 75, height: 75)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                    }
+                    
+                    
+                    Spacer()
+                    
+                    Button {
+                        withAnimation {
+                            selectedTab += 1
+                        }
+                    } label: {
+                        Image(systemName: "arrow.right.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 75, height: 75)
+                    }
+                    .disabled(selectedTab == process.sortedSteps.count - 1)
+                }
+                .padding()
+            }
+            
+        }
 
     
     func generateNewTimer(newStep: SingleStep) {
@@ -195,10 +203,14 @@ struct DevelopView: View {
         }
 
     }
-    func formatSecondsToMinutesSeconds(_ totalSeconds: Int) -> String {
-        let minutes = totalSeconds / 60
+}
+
+extension TimeInterval {
+    func formatToMinSec() -> String {
+        let totalSeconds = Int(self)
+        let minutes = (totalSeconds / 60) % 60
         let seconds = totalSeconds % 60
-        return String(format: "%02i:%02i", minutes, seconds)
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
 

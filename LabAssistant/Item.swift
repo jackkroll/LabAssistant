@@ -92,6 +92,19 @@ final class DevProcess {
         }
     }
     
+    var estTime: TimeInterval? {
+        var time : TimeInterval? = nil
+        for step in steps {
+            if step.totalDuration != nil {
+                if time == nil {
+                    time = 0
+                }
+                time! += step.totalDuration!
+            }
+        }
+        return time
+    }
+    
     init(nickname: String, notes: String = "", steps: [SingleStep]) {
         self.nickname = nickname
         self.notes = notes

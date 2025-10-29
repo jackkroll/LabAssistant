@@ -13,6 +13,7 @@ struct LabAssistantApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Chemical.self,
+            DevProcess.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 
@@ -25,7 +26,7 @@ struct LabAssistantApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeScreenView()
         }
         .modelContainer(sharedModelContainer)
     }

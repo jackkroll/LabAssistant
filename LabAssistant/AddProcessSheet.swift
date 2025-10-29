@@ -6,12 +6,7 @@ struct AddProcessSheet: View {
     @Environment(\.modelContext) private var modelContext
     
     
-    @State private var process: DevProcess
-    
-    init(process: DevProcess) {
-        _process = State(initialValue: process)
-    }
-    
+    @State private var process: DevProcess = .init(nickname: "", steps: [])
     var body: some View {
         NavigationStack {
             Form {
@@ -28,94 +23,102 @@ struct AddProcessSheet: View {
                     if process.steps.isEmpty {
                         ContentUnavailableView("No steps", systemImage: "list.bullet", description: Text("Tap Add Step"))
                     } else {
-                        ForEach($process.sortedSteps) { step in
-                            HStack {
-                                TextField("Step title", text: step.title)
-                                    .textInputAutocapitalization(.words)
-                                    .autocorrectionDisabled()
-                                
-                                NavigationLink(value: step.wrappedValue) {
-                                    Image(systemName: "pencil.circle.fill")
-                                        .symbolRenderingMode(.hierarchical)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 30, height: 30)
-                                }
-                                
-                                Button {
-                                    if step.index.wrappedValue - 1 >= 0 {
-                                        withAnimation {
-                                            process.sortedSteps[step.index.wrappedValue - 1].index = step.index.wrappedValue
-                                            process.sortedSteps[step.index.wrappedValue].index = step.index.wrappedValue - 1
-                                            save()
-                                            process.sortedSteps = process.sortedSteps
+                        
+                            ForEach($process.sortedSteps) { step in
+                                NavigationStack {
+                                    HStack {
+                                        TextField("Step title", text: step.title)
+                                            .textInputAutocapitalization(.words)
+                                            .autocorrectionDisabled()
+                                        
+                                        NavigationLink(value: step.wrappedValue) {
+                                            Image(systemName: "pencil.circle.fill")
+                                                .symbolRenderingMode(.hierarchical)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 30, height: 30)
                                         }
-                                    }
-                                    
-                                }
-                                label: {
-                                    Image(systemName: "arrow.up.circle.fill")
-                                        .symbolRenderingMode(.hierarchical)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 30, height: 30)
-                                }
-                                .buttonStyle(.borderless)
-                                .disabled(step.index.wrappedValue == 0)
-                                
-                                
-                                Button {
-                                    if step.index.wrappedValue + 1 <= process.sortedSteps.count - 1 {
-                                        withAnimation {
-                                            process.sortedSteps[step.index.wrappedValue + 1].index = step.index.wrappedValue
-                                            process.sortedSteps[step.index.wrappedValue].index = step.index.wrappedValue + 1
-                                            save()
-                                            process.sortedSteps = process.sortedSteps
-                                        }
-                                    }
-                
-                                } label: {
-                                    Image(systemName: "arrow.down.circle.fill")
-                                        .symbolRenderingMode(.hierarchical)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(width: 30, height: 30)
-                                }
-                                .buttonStyle(.borderless)
-                                .disabled(step.index.wrappedValue == process.steps.count - 1)
-                                
-                                Spacer()
-                                Button(role: .destructive) {
-                                    withAnimation {
-                                        process.steps.removeAll(where: { $0.id == step.id })
-                                        if process.steps.count > 0 {
-                                            var newIndex = 0
-                                            for step in process.sortedSteps {
-                                                step.index = newIndex
-                                                newIndex += 1
+                                        .navigationLinkIndicatorVisibility(.hidden)
+                                        .buttonBorderShape(.capsule)
+                                        .buttonStyle(.borderedProminent)
+                                        
+                                        Button {
+                                            if step.index.wrappedValue - 1 >= 0 {
+                                                withAnimation {
+                                                    process.sortedSteps[step.index.wrappedValue - 1].index = step.index.wrappedValue
+                                                    process.sortedSteps[step.index.wrappedValue].index = step.index.wrappedValue - 1
+                                                    save()
+                                                    process.sortedSteps = process.sortedSteps
+                                                }
                                             }
                                             
                                         }
-                                        save()
+                                        label: {
+                                            Image(systemName: "arrow.up.circle.fill")
+                                                .symbolRenderingMode(.hierarchical)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 30, height: 30)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(step.index.wrappedValue == 0)
+                                        
+                                        
+                                        Button {
+                                            if step.index.wrappedValue + 1 <= process.sortedSteps.count - 1 {
+                                                withAnimation {
+                                                    process.sortedSteps[step.index.wrappedValue + 1].index = step.index.wrappedValue
+                                                    process.sortedSteps[step.index.wrappedValue].index = step.index.wrappedValue + 1
+                                                    save()
+                                                    process.sortedSteps = process.sortedSteps
+                                                }
+                                            }
+                                            
+                                        } label: {
+                                            Image(systemName: "arrow.down.circle.fill")
+                                                .symbolRenderingMode(.hierarchical)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 30, height: 30)
+                                        }
+                                        .buttonStyle(.borderless)
+                                        .disabled(step.index.wrappedValue == process.steps.count - 1)
+                                        
+                                        Spacer()
+                                        Button(role: .destructive) {
+                                            withAnimation {
+                                                process.steps.removeAll(where: { $0.id == step.id })
+                                                if process.steps.count > 0 {
+                                                    var newIndex = 0
+                                                    for step in process.sortedSteps {
+                                                        step.index = newIndex
+                                                        newIndex += 1
+                                                    }
+                                                    
+                                                }
+                                                save()
+                                            }
+                                        } label: {
+                                            Image(systemName: "trash.circle.fill")
+                                                .symbolRenderingMode(.hierarchical)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(maxWidth: 40)
+                                        }
+                                        .buttonStyle(.borderless)
                                     }
-                                } label: {
-                                    Image(systemName: "trash.circle.fill")
-                                        .symbolRenderingMode(.hierarchical)
-                                        .resizable()
-                                        .scaledToFit()
-                                        .frame(maxWidth: 40)
+                                    .navigationDestination(for: SingleStep.self) { step in
+                                        if let binding = binding(for: step) {
+                                            StepDetailView(step: binding)
+                                        } else {
+                                            // Fallback if binding can't be found
+                                            Text("Step not found")
+                                        }
+                                    }
                                 }
-                                .buttonStyle(.borderless)
-                            }
+                                
                         }
-                        .navigationDestination(for: SingleStep.self) { step in
-                            if let binding = binding(for: step) {
-                                StepDetailView(step: binding)
-                            } else {
-                                // Fallback if binding can't be found
-                                Text("Step not found")
-                            }
-                        }
+                        
                     }
                     
                     Button {
@@ -141,14 +144,21 @@ struct AddProcessSheet: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", role: .cancel) { dismiss() }
+                    Button("Cancel", role: .cancel) {
+                        dismiss()
+                    }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .disabled(process.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                    Button("Done") {
+                        dismiss()
+                        modelContext.insert(process)
+                        try? modelContext.save()
+                    }
+                    .disabled(process.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
+
         }
     }
     
@@ -175,6 +185,6 @@ struct AddProcessSheet: View {
     let process = DevProcess(nickname: "", notes: "", steps: [])
     context.insert(process)
     
-    return AddProcessSheet(process: process)
+    return AddProcessSheet()
         .modelContainer(container)
 }
