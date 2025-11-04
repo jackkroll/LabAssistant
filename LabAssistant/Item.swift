@@ -37,16 +37,16 @@ enum NamedColor: String, Codable, CaseIterable {
 @Model
 final class Chemical {
     var nickname: String
-    var expriryDate: Date?
+    var expiryDate: Date?
     var max: Double
     var current: Double
     var notes: String?
     var tags : [Tag] = []
     var units: Units
     
-    init(nickname: String, expriryDate: Date? = nil, max: Double, current: Double, notes: String? = nil, tags: [Tag] = [], units: Units = .ml) {
+    init(nickname: String, expiryDate: Date? = nil, max: Double, current: Double, notes: String? = nil, tags: [Tag] = [], units: Units = .ml) {
         self.nickname = nickname
-        self.expriryDate = expriryDate
+        self.expiryDate = expiryDate
         self.max = max
         self.current = current
         self.notes = notes
@@ -60,21 +60,81 @@ final class Chemical {
     
 }
 
-final class Tag : Identifiable, Codable, Equatable {
+@Model
+final class Tag : Identifiable, Equatable {
     var title: String
-    var storedColor: NamedColor
+    var storedColor: String
     
+    init(title: String, storedColor: String) {
+        self.title = title
+        self.storedColor = storedColor
+    }
+    
+    init(title: String, storedColor: Color, environment: EnvironmentValues) {
+        self.title = title
+        self.storedColor = colorToHex(resolvedColor: storedColor.resolve(in: environment))
+    }
     init(title: String) {
         self.title = title
-        self.storedColor = .blue
+        self.storedColor = colorToHex(resolvedColor: Color.Resolved(red: 84/255, green: 170/255, blue: 255/255))
     }
     
     func swiftColor() -> Color {
-        storedColor.color
+        hexToColor(hex: storedColor)
     }
 
     static func == (lhs: Tag, rhs: Tag) -> Bool {
         lhs.title == rhs.title
+    }
+}
+
+func hexToColor (hex:String) -> Color {
+    var hexSanitized = hex.trimmingCharacters(in: .whitespacesAndNewlines)
+    hexSanitized = hexSanitized.replacingOccurrences(of: "#", with: "")
+    
+    var rgb: UInt64 = 0
+    
+    var r: CGFloat = 0.0
+    var g: CGFloat = 0.0
+    var b: CGFloat = 0.0
+    var a: CGFloat = 1.0
+    
+    let length = hexSanitized.count
+    
+    Scanner(string: hexSanitized).scanHexInt64(&rgb)
+    
+    if length == 6 {
+        r = CGFloat((rgb & 0xFF0000) >> 16) / 255.0
+        g = CGFloat((rgb & 0x00FF00) >> 8) / 255.0
+        b = CGFloat(rgb & 0x0000FF) / 255.0
+    }
+    else if length == 8 {
+        r = CGFloat((rgb & 0xFF000000) >> 24) / 255.0
+        g = CGFloat((rgb & 0x00FF0000) >> 16) / 255.0
+        b = CGFloat((rgb & 0x0000FF00) >> 8) / 255.0
+        a = CGFloat(rgb & 0x000000FF) / 255.0
+    }
+    return Color(red: r, green: g, blue: b, opacity: a)
+}
+
+func colorToHex (resolvedColor:Color.Resolved, encodeAlpha: Bool = false) -> String {
+    let r = resolvedColor.red
+    let g = resolvedColor.green
+    let b = resolvedColor.blue
+    let a = resolvedColor.opacity
+    
+    if encodeAlpha {
+        return String(format: "%02lX%02lX%02lX%02lX",
+                      lroundf(r * 255),
+                      lroundf(g * 255),
+                      lroundf(b * 255),
+                      lroundf(a * 255))
+    }
+    else {
+        return String(format: "%02lX%02lX%02lX",
+                      lroundf(r * 255),
+                      lroundf(g * 255),
+                      lroundf(b * 255))
     }
 }
 

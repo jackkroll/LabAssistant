@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */ = {isa = PBXBuildFile; productRef = 56EB2D9B2EB9969C008E7EF6 /* Onboarding */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		56830FB42E89BDC40084D321 /* LabAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LabAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = LabAssistant;
 			packageProductDependencies = (
+				56EB2D9B2EB9969C008E7EF6 /* Onboarding */,
 			);
 			productName = LabAssistant;
 			productReference = 56830FB42E89BDC40084D321 /* LabAssistant.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 56830FAB2E89BDC40084D321;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				56EB2D9A2EB9969C008E7EF6 /* XCRemoteSwiftPackageReference "SwiftUI-Onboarding" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 56830FB52E89BDC40084D321 /* Products */;
 			projectDirPath = "";
@@ -332,6 +341,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		56EB2D9A2EB9969C008E7EF6 /* XCRemoteSwiftPackageReference "SwiftUI-Onboarding" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/jackkroll/SwiftUI-Onboarding";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		56EB2D9B2EB9969C008E7EF6 /* Onboarding */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 56EB2D9A2EB9969C008E7EF6 /* XCRemoteSwiftPackageReference "SwiftUI-Onboarding" */;
+			productName = Onboarding;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 56830FAC2E89BDC40084D321 /* Project object */;
 }

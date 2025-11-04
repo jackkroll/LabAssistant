@@ -26,14 +26,7 @@ struct ChemicalStorageView: View {
                 else {
                     List {
                         ForEach(items) { item in
-                            NavigationLink {
-                                VStack {
-                                    Text(item.nickname)
-                                    Gauge(value: item.current, in: 0...item.max) {
-                                        Label("\(item.current)/\(item.max)", systemImage: "flask")
-                                    }
-                                }
-                            } label: {
+                            NavigationLink(value: item) {
                                 ChemCard(chem: item)
                             }
                         }
@@ -59,6 +52,9 @@ struct ChemicalStorageView: View {
                     }
                 }
             }
+            .navigationDestination(for: Chemical.self) { chemical in
+                ChemicalDetailView(chemical: chemical)
+            }
         }
     }
 
@@ -66,7 +62,7 @@ struct ChemicalStorageView: View {
         withAnimation {
             let newItem = Chemical(nickname: "Water", max: 100, current: 80)
             newItem.tags.append(Tag(title: "Safe"))
-            newItem.expriryDate = .distantPast
+            newItem.expiryDate = .distantPast
             modelContext.insert(newItem)
         }
     }
@@ -94,12 +90,16 @@ struct TagRender: View {
 }
 struct SmallDate: View {
     var date: Date
+    var expanded = false
+    
     var body: some View {
         if Date.now < date {
+            let color = cardColorWarning(distance: Date.now.distance(to: date))
             Text(date, style: .relative)
                 .padding(10)
-                .background(.gray.opacity(0.25))
-                .foregroundStyle(.gray)
+                .frame(maxWidth: expanded ? .infinity : nil)
+                .background(color.opacity(0.25))
+                .foregroundStyle(color)
                 .clipShape(Capsule())
                 .font(.callout)
                 .fontWeight(.semibold)
@@ -107,11 +107,28 @@ struct SmallDate: View {
         else {
             Text("Expired")
                 .padding(10)
+                .frame(maxWidth: expanded ? .infinity : nil)
                 .background(.red.opacity(0.25))
                 .foregroundStyle(.red)
                 .clipShape(Capsule())
                 .font(.callout)
                 .fontWeight(.semibold)
+                
+        }
+    }
+    
+    func cardColorWarning(distance: TimeInterval) -> Color {
+        if distance < 86400 * 3 {
+            return Color.red
+        }
+        else if distance < 86400 * 7 {
+            return Color.orange
+        }
+        else if distance < 86400 * 14 {
+            return Color.yellow
+        }
+        else {
+            return Color.green
         }
     }
 }
@@ -122,29 +139,61 @@ struct ChemCard: View {
         VStack {
             HStack {
                 Text(chem.nickname)
-                    .font(.title3)
+                    .font(.title)
+                    .fontWeight(.bold)
                 Spacer()
+                
+                if (chem.expiryDate != nil) {
+                    SmallDate(date: chem.expiryDate!)
+                }
+            }
+            HStack{
                 ForEach(chem.tags) { tag in
                     TagRender(tag: tag)
                 }
-                if (chem.expriryDate != nil) {
-                    SmallDate(date: chem.expriryDate!)
-                }
+                Spacer()
             }
             Gauge(value: chem.current, in: 0...chem.max) {
+                /*
                 Label {
                     Text("\(chem.current)\(chem.units.rawValue) remaining")
                 } icon: {
                     Image(systemName: "flask")
                 }
-                .labelStyle(.titleOnly)
+                .labelStyle(.n)
+                 */
             }
             .gaugeStyle(.linearCapacity)
         }
     }
 }
 
-#Preview {
-    ChemicalStorageView()
-        .modelContainer(for: Chemical.self, inMemory: true)
+#Preview("Sample Chemicals") {
+    // Create an in-memory container for previews
+    let container = try! ModelContainer(for: Chemical.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true))
+    let context = container.mainContext
+
+    // Build some sample data
+    let water = Chemical(nickname: "Water", max: 1000, current: 850)
+    water.units = .ml
+    water.tags = [Tag(title: "Safe"), Tag(title: "Common")]
+    water.expiryDate = Calendar.current.date(byAdding: .day, value: 365, to: .now)
+
+    let ethanol = Chemical(nickname: "Ethanol", max: 500, current: 120)
+    ethanol.units = .ml
+    ethanol.tags = [Tag(title: "Flammable"), Tag(title: "Hazard")]
+    ethanol.expiryDate = Calendar.current.date(byAdding: .month, value: 6, to: .now)
+
+    let hcl = Chemical(nickname: "HCl", max: 250, current: 40)
+    hcl.units = .ml
+    hcl.tags = [Tag(title: "Corrosive"), Tag(title: "Acid")]
+    hcl.expiryDate = Calendar.current.date(byAdding: .day, value: -10, to: .now) // expired
+
+    // Insert into the preview context
+    context.insert(water)
+    context.insert(ethanol)
+    context.insert(hcl)
+
+    return ChemicalStorageView()
+        .modelContainer(container)
 }

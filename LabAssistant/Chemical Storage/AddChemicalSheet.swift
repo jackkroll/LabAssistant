@@ -163,86 +163,12 @@ struct AddChemicalSheet: View {
                     Text("Notes")
                 }
                 */
-                Section {
-                    // Preview Tags
-                    if tags.isEmpty {
-                        Text("No tags yet")
-                            .foregroundStyle(.secondary)
-                    } else {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            HStack(spacing: 8) {
-                                ForEach(tags, id: \.title) { tag in
-                                    HStack(spacing: 4) {
-                                        TagRender(tag: tag)
-                                            .matchedGeometryEffect(id: tagKey(tag.title), in: tagNamespace)
-                                            .transition(.asymmetric(insertion: .scale.combined(with: .opacity), removal: .opacity))
-                                        Button {
-                                            removeTag(tag)
-                                        } label: {
-                                            Image(systemName: "xmark.circle.fill")
-                                                .imageScale(.medium)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .animation(.snappy, value: tags)
-                            .padding(.vertical, 4)
-                        }
-                    }
-                    // Add preset
-                    ScrollView(.horizontal, showsIndicators: false) {
-                        HStack {
-                            ForEach(PresetTag.allCases) { preset in
-                                let visualTag = presetTag(preset: preset)
-                                if !tags.contains(where: { $0 == visualTag }) {
-                                    HStack(spacing: 4) {
-                                        TagRender(tag: visualTag)
-                                            .matchedGeometryEffect(id: tagKey(visualTag.title), in: tagNamespace)
-                                            .transition(.opacity)
-                                        Button {
-                                            addPreset(tag: visualTag)
-                                        } label: {
-                                            Image(systemName: "plus.circle.fill")
-                                                .imageScale(.medium)
-                                        }
-                                        .buttonStyle(.plain)
-                                        .foregroundStyle(.secondary)
-                                    }
-                                    .transition(.opacity)
-                                }
-                            }
-                            if allPresetsGone() {
-                                Text("No more preset tags, add your own!")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                                    .transition(.opacity)
-                            }
-                            
-                        }
-                        .animation(.snappy, value: tags)
-                    }
-                    // Add custom
-                    HStack(spacing: 8) {
-                        TextField("Add a tag", text: $newTagTitle)
-                            .textInputAutocapitalization(.words)
-                            .autocorrectionDisabled()
-                            .onSubmit { addTag() }
-                        Button {
-                            addTag()
-                        } label: {
-                            Label("Add", systemImage: "plus.circle.fill")
-                                .labelStyle(.iconOnly)
-                        }
-                        .disabled(newTagTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    }
-                    
-                     
-                } header: {
-                    Text("Tags")
-                } footer: {
-                    Text("Presets to help you organize your chemicals.")
+                NavigationLink {
+                    TagEditorView(appliedTags: $tags)
+                        .navigationTitle(nickname.appending(" Tags"))
+                } label: {
+                    Image(systemName: "tag.fill")
+                    Text("Tag Editor")
                 }
             }
             .scrollDismissesKeyboard(.immediately)
@@ -352,7 +278,7 @@ struct AddChemicalSheet: View {
         let expiry: Date? = hasExpiry ? expiryDate : nil
         let chemical = Chemical(
             nickname: nickname,
-            expriryDate: expiry,
+            expiryDate: expiry,
             max: maxAmount!,
             current: currentAmount!,
             notes: notes,
@@ -362,22 +288,22 @@ struct AddChemicalSheet: View {
         return chemical
     }
     
-    private func presetTag(preset: PresetTag) -> Tag {
+    public func presetTag(preset: PresetTag) -> Tag {
         let tag : Tag
         switch preset {
         case .workingSolution:
             tag = Tag(title: "Working Solution")
-            tag.storedColor = .green
+            //tag.storedColor = colorToHex(color: .green)
         case .liquid:
             tag = Tag(title: "Liquid")
-            tag.storedColor = .blue
+            //tag.storedColor = colorToHex(color: .blue)
         case .powder:
             tag = Tag(title: "Powder")
-            tag.storedColor = .indigo
+            //tag.storedColor = colorToHex(color: .indigo)
         }
         return tag
     }
-    private enum PresetTag : String, CaseIterable, Identifiable{
+    public enum PresetTag : String, CaseIterable, Identifiable{
         var id: String {rawValue}
         case workingSolution
         case liquid
@@ -425,8 +351,8 @@ struct AddChemicalSheet: View {
         let container = try ModelContainer(for: Chemical.self, configurations: config)
         let context = container.mainContext
         // Seed a few example chemicals for the mixture picker
-        let sample1 = Chemical(nickname: "Water", expriryDate: nil, max: 1000, current: 750, notes: "", tags: [], units: .ml)
-        let sample2 = Chemical(nickname: "Ethanol", expriryDate: nil, max: 500, current: 200, notes: "", tags: [], units: .ml)
+        let sample1 = Chemical(nickname: "Water", expiryDate: nil, max: 1000, current: 750, notes: "", tags: [], units: .ml)
+        let sample2 = Chemical(nickname: "Ethanol", expiryDate: nil, max: 500, current: 200, notes: "", tags: [], units: .ml)
         context.insert(sample1)
         context.insert(sample2)
         return AddChemicalSheet()

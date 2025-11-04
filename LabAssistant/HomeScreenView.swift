@@ -18,12 +18,16 @@ struct HomeScreenView: View {
             Tab("Darkroom", systemImage: "film"){
                 ProcessView()
             }
+            /*
             Tab("Preset", systemImage: "square.and.arrow.down") {
                 PresetView()
             }
+            */
         }
     }
 }
+
+
 
 #Preview {
     HomeScreenView()

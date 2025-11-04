@@ -60,6 +60,14 @@ struct DevelopView: View {
                                 //Spacer()
                                 GroupBox{
                                     VStack {
+                                        if subprocessTimeRemaining! > 0 {
+                                            Image(systemName: "stopwatch.fill")
+                                                .symbolRenderingMode(.multicolor)
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(maxWidth: 50)
+                                            
+                                        }
                                         Text(step.substep!.title)
                                             .font(.title2)
                                             .fontWeight(.semibold)

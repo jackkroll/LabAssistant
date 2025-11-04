@@ -1,0 +1,15 @@
+{
+  "originHash" : "90a53c01d4d65090b4e164254381b03f58509779bebb18a5b8d63f21361ac35b",
+  "pins" : [
+    {
+      "identity" : "swiftui-onboarding",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/jackkroll/SwiftUI-Onboarding",
+      "state" : {
+        "branch" : "main",
+        "revision" : "e1a762d57757c2427c1871b86d47f43b1fd0b45c"
+      }
+    }
+  ],
+  "version" : 3
+}
