@@ -47,6 +47,17 @@ struct ProcessView: View {
                                                 .resizable()
                                                 .scaledToFit()
                                                 .frame(width: 40, height: 40)
+                                                .tint(.green)
+                                        }
+                                        
+                                        NavigationLink {
+                                            ProcessEditView(process: process)
+                                        } label: {
+                                            Image(systemName: "pencil.circle.fill")
+                                                .resizable()
+                                                .scaledToFit()
+                                                .frame(width: 40, height: 40)
+                                                .tint(.blue)
                                         }
                                         
                                         Spacer()
@@ -85,7 +96,7 @@ struct ProcessView: View {
                 }
             }
             .navigationDestination(for: DevProcess.self) { process in
-                DevelopView(process: process)
+                    DevelopView(process: process)
             }
         }
         
