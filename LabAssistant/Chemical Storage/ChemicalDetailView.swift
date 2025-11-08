@@ -52,7 +52,7 @@ struct ChemicalDetailView: View {
                             .font(.callout).foregroundStyle(.secondary)
                         HStack {
                             TextField("0", value: $chemical.current, format: .number)
-                                .keyboardType(.numberPad)
+                                .keyboardType(.decimalPad)
                                 .focused($isEditingCurrent)
                                 .onSubmit { normalizeCurrent() }
                                 .onChange(of: isEditingCurrent) { _, nowFocused in
@@ -70,7 +70,7 @@ struct ChemicalDetailView: View {
                             .font(.callout).foregroundStyle(.secondary)
                         HStack {
                             TextField("0", value: $chemical.max, format: .number)
-                                .keyboardType(.numberPad)
+                                .keyboardType(.decimalPad)
                                 .focused($isEditingMax)
                                 .onSubmit { normalizeMax() }
                                 .onChange(of: isEditingMax) { _, nowFocused in

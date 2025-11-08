@@ -43,7 +43,7 @@ struct LabAssistantApp: App {
 
 extension OnboardingConfiguration {
     static let production = OnboardingConfiguration(
-        accentColor: .blue,
+        accentColor: .red,
         appDisplayName: "Lab Assistant",
         features: [
             FeatureInfo(

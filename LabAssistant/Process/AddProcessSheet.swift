@@ -8,22 +8,26 @@ struct AddProcessSheet: View {
     
     @State private var process: DevProcess = .init(nickname: "", steps: [])
     var body: some View {
-        NavigationStack {
-            Form {
-                Section("Details") {
-                    TextField("Process name", text: $process.nickname)
-                        .textInputAutocapitalization(.words)
-                        .autocorrectionDisabled()
-                    
-                    TextField("Notes (optional)", text: $process.notes, axis: .vertical)
-                        .multilineTextAlignment(.leading)
-                }
-                
-                Section("Steps") {
-                    if process.steps.isEmpty {
-                        ContentUnavailableView("No steps", systemImage: "list.bullet", description: Text("Tap Add Step"))
-                    } else {
+        if process.steps == nil {
+            
+        }
+        else {
+            NavigationStack {
+                Form {
+                    Section("Details") {
+                        TextField("Process name", text: $process.nickname)
+                            .textInputAutocapitalization(.words)
+                            .autocorrectionDisabled()
                         
+                        TextField("Notes (optional)", text: $process.notes, axis: .vertical)
+                            .multilineTextAlignment(.leading)
+                    }
+                    
+                    Section("Steps") {
+                        if process.sortedSteps.isEmpty {
+                            ContentUnavailableView("No steps", systemImage: "list.bullet", description: Text("Tap Add Step"))
+                        } else {
+                            
                             ForEach($process.sortedSteps) { step in
                                 NavigationStack {
                                     HStack {
@@ -82,13 +86,13 @@ struct AddProcessSheet: View {
                                                 .frame(width: 30, height: 30)
                                         }
                                         .buttonStyle(.borderless)
-                                        .disabled(step.index.wrappedValue == process.steps.count - 1)
+                                        .disabled(step.index.wrappedValue == process.sortedSteps.count - 1)
                                         
                                         Spacer()
                                         Button(role: .destructive) {
                                             withAnimation {
-                                                process.steps.removeAll(where: { $0.id == step.id })
-                                                if process.steps.count > 0 {
+                                                process.steps!.removeAll(where: { $0.id == step.id })
+                                                if process.steps!.count > 0 {
                                                     var newIndex = 0
                                                     for step in process.sortedSteps {
                                                         step.index = newIndex
@@ -117,48 +121,49 @@ struct AddProcessSheet: View {
                                     }
                                 }
                                 
+                            }
+                            
                         }
                         
+                        Button {
+                            withAnimation {
+                                let newStep = SingleStep(
+                                    title: "Untitled",
+                                    index: process.steps!.count,
+                                    notes: "",
+                                    autoAdvance: true,
+                                    associatedChemicals: [],
+                                    totalDuration: nil,
+                                    substep: nil)
+                                process.steps!.append(newStep)
+                                print("add")
+                            }
+                            save()
+                        } label: {
+                            Label("Add Step", systemImage: "plus.circle.fill")
+                        }
+                    }
+                }
+                .navigationTitle("New Process")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button(role: .cancel) {
+                            dismiss()
+                        }
                     }
                     
-                    Button {
-                        withAnimation {
-                            let newStep = SingleStep(
-                                title: "Untitled",
-                                index: process.steps.count,
-                                notes: "",
-                                autoAdvance: true,
-                                associatedChemicals: [],
-                                totalDuration: nil,
-                                substep: nil)
-                            process.steps.append(newStep)
-                            print("add")
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button(role: .confirm){
+                            dismiss()
+                            modelContext.insert(process)
+                            try? modelContext.save()
                         }
-                        save()
-                    } label: {
-                        Label("Add Step", systemImage: "plus.circle.fill")
+                        .disabled(process.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     }
                 }
+                
             }
-            .navigationTitle("New Process")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button(role: .cancel) {
-                        dismiss()
-                    }
-                }
-
-                ToolbarItem(placement: .confirmationAction) {
-                    Button(role: .confirm){
-                        dismiss()
-                        modelContext.insert(process)
-                        try? modelContext.save()
-                    }
-                    .disabled(process.nickname.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-
         }
     }
     

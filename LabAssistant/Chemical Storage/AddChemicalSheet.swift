@@ -19,7 +19,7 @@ struct AddChemicalSheet: View {
     @State private var currentAmount: Double? = nil
     @State private var notes: String = ""
     @State private var units: Chemical.Units = .ml
-    @State private var tags: [Tag] = []
+    @State private var tags: [Tag]? = []
     @State private var newTagTitle: String = ""
     @Namespace private var tagNamespace
     @State private var usesOtherChemical: Bool = false
@@ -256,25 +256,10 @@ struct AddChemicalSheet: View {
         mixtureComponents.remove(at: index)
     }
     
-    func allPresetsGone() -> Bool {
-        var presetsFound = 0
-        let presetTitles : [String] = ["Powder", "Liquid", "Working Solution"]
-        for tag in tags {
-            if presetTitles.contains(tag.title) {
-                presetsFound+=1
-                if presetsFound >= PresetTag.allCases.count {
-                    return true
-                }
-            }
-        }
-        return false
-    }
-    
     func newChemical() -> Chemical? {
-        if isSaveDisabled {
+        if isSaveDisabled || tags == nil{
             return nil
         }
-        // Build optional expiry
         let expiry: Date? = hasExpiry ? expiryDate : nil
         let chemical = Chemical(
             nickname: nickname,
@@ -282,66 +267,10 @@ struct AddChemicalSheet: View {
             max: maxAmount!,
             current: currentAmount!,
             notes: notes,
-            tags: tags,
+            tags: tags!,
             units: units
         )
         return chemical
-    }
-    
-    public func presetTag(preset: PresetTag) -> Tag {
-        let tag : Tag
-        switch preset {
-        case .workingSolution:
-            tag = Tag(title: "Working Solution")
-            //tag.storedColor = colorToHex(color: .green)
-        case .liquid:
-            tag = Tag(title: "Liquid")
-            //tag.storedColor = colorToHex(color: .blue)
-        case .powder:
-            tag = Tag(title: "Powder")
-            //tag.storedColor = colorToHex(color: .indigo)
-        }
-        return tag
-    }
-    public enum PresetTag : String, CaseIterable, Identifiable{
-        var id: String {rawValue}
-        case workingSolution
-        case liquid
-        case powder
-    }
-    
-    private func tagKey(_ title: String) -> String {
-        "tag-" + title.lowercased()
-    }
-    
-    private func addPreset(tag: Tag) {
-        withAnimation(.bouncy) {
-            tags.append(tag)
-        }
-    }
-    
-    private func addTag(title inputTagTitle: String? = nil) {
-        let trimmed: String
-        if inputTagTitle != nil {
-            trimmed = inputTagTitle!.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        else {
-            trimmed = newTagTitle.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        guard !trimmed.isEmpty else { return }
-        // Prevent duplicates (case-insensitive)
-        if !tags.contains(where: { $0.title.compare(trimmed, options: .caseInsensitive) == .orderedSame }) {
-            withAnimation(.bouncy) {
-                tags.append(Tag(title: trimmed))
-            }
-        }
-        newTagTitle = ""
-    }
-
-    private func removeTag(_ tag: Tag) {
-        withAnimation(.bouncy) {
-            tags.removeAll { $0.title.compare(tag.title, options: .caseInsensitive) == .orderedSame }
-        }
     }
 }
 

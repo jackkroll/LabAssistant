@@ -13,123 +13,128 @@ struct TagEditorView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var allTags: [Tag]
     @State var selectedColor: Color = .blue
-    @Binding var appliedTags : [Tag]
+    @Binding var appliedTags : [Tag]?
     @State var newTagTitle: String = ""
     
     @State var selectedTag : Tag? = nil
     @State var tagModifySheetIsPresented: Bool = false
     var body: some View {
-        VStack {
-            Form {
-                Section {
-                    ScrollView(.horizontal){
-                        HStack {
-                            if appliedTags.isEmpty {
-                                Text("No tags applied")
-                                    .foregroundStyle(.secondary)
-                            }
-                            ForEach(appliedTags) { tag in
-                                TagRender(tag: tag)
-                                    .onTapGesture {
-                                        withAnimation {
-                                            appliedTags.removeAll { $0.id == tag.id }
-                                        }
-                                    }
-                                    .onLongPressGesture {
-                                        selectedTag = tag
-                                    }
-                            }
-                        }
-                    }
-                    .scrollIndicators(.hidden)
-                    .clipShape(Capsule())
-                } header: {
-                    Text("Applied Tags")
-                } footer: {
-                    Text("**Long press** a tag to modify it")
-                }
-                
-                Section {
-                    ScrollView(.horizontal){
-                        HStack {
-                            ForEach(allTags) { tag in
-                                if !appliedTags.contains(tag) {
+        if appliedTags == nil {
+            ProgressView()
+        }
+        else {
+            VStack {
+                Form {
+                    Section {
+                        ScrollView(.horizontal){
+                            HStack {
+                                if appliedTags!.isEmpty {
+                                    Text("No tags applied")
+                                        .foregroundStyle(.secondary)
+                                }
+                                ForEach(appliedTags!) { tag in
                                     TagRender(tag: tag)
                                         .onTapGesture {
                                             withAnimation {
-                                                if !appliedTags.contains(where: { $0.id == tag.id }) {
-                                                    appliedTags.append(tag)
-                                                }
+                                                appliedTags!.removeAll { $0.id == tag.id }
                                             }
                                         }
                                         .onLongPressGesture {
                                             selectedTag = tag
                                         }
                                 }
+                            }
+                        }
+                        .scrollIndicators(.hidden)
+                        .clipShape(Capsule())
+                    } header: {
+                        Text("Applied Tags")
+                    } footer: {
+                        Text("**Long press** a tag to modify it")
+                    }
+                    
+                    Section {
+                        ScrollView(.horizontal){
+                            HStack {
+                                ForEach(allTags) { tag in
+                                    if !appliedTags!.contains(tag) {
+                                        TagRender(tag: tag)
+                                            .onTapGesture {
+                                                withAnimation {
+                                                    if !appliedTags!.contains(where: { $0.id == tag.id }) {
+                                                        appliedTags!.append(tag)
+                                                    }
+                                                }
+                                            }
+                                            .onLongPressGesture {
+                                                selectedTag = tag
+                                            }
+                                    }
+                                    
+                                }
+                            }
+                            if allTags.isEmpty || allTags.allSatisfy({appliedTags!.contains($0)}) {
+                                Text("No more tags available! Make some more!")
+                                    .foregroundStyle(.secondary)
                                 
                             }
                         }
-                        if allTags.isEmpty || allTags.allSatisfy({appliedTags.contains($0)}) {
-                            Text("No more tags available! Make some more!")
-                                .foregroundStyle(.secondary)
-                            
-                        }
-                    }
-                    .scrollIndicators(.hidden)
+                        .scrollIndicators(.hidden)
                         .clipShape(Capsule())
-                } header: {
-                    Text("Available Tags")
-                } footer: {
-                    Text("**Tap** a tag to apply it")
-                }
-                
-                Section {
-                    TextField("Tag Title", text: $newTagTitle)
-                    ColorPicker("Color", selection: $selectedColor, supportsOpacity: false)
-                    Button("Create Tag") {
-                        let newTag = Tag(title: newTagTitle, storedColor: selectedColor, environment: environment)
-                        withAnimation {
-                            modelContext.insert(newTag)
-                        }
-                        try? modelContext.save()
+                    } header: {
+                        Text("Available Tags")
+                    } footer: {
+                        Text("**Tap** a tag to apply it")
                     }
-                    .buttonStyle(.borderedProminent)
-                    .buttonSizing(.flexible)
-                    .fontWeight(.semibold)
-                } header: {
-                    Text("Create a New Tag")
-                }
-            }
-            .sheet(isPresented: $tagModifySheetIsPresented) {
-                if selectedTag != nil {
-                    IndividualTagEditor(tag: selectedTag!)
-                        .presentationDetents([.medium])
-                }
-                else {
-                    ProgressView()
-                }
-            }
-            .onChange(of: selectedTag) { _, new in
-                if new != nil {
-                    tagModifySheetIsPresented = true
-                }
-            }
-            .onChange(of: tagModifySheetIsPresented) { _, new in
-                if new == false {
-                    selectedTag = nil
-                }
-            }
-            .onChange(of: allTags) { old, new in
-                if old.count >= new.count {
-                    for tag in appliedTags {
-                        if !allTags.contains(tag) {
+                    
+                    Section {
+                        TextField("Tag Title", text: $newTagTitle)
+                        ColorPicker("Color", selection: $selectedColor, supportsOpacity: false)
+                        Button("Create Tag") {
+                            let newTag = Tag(title: newTagTitle, storedColor: selectedColor, environment: environment)
                             withAnimation {
-                                appliedTags.removeAll(where: { $0.id == tag.id })
+                                modelContext.insert(newTag)
+                            }
+                            try? modelContext.save()
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .buttonSizing(.flexible)
+                        .fontWeight(.semibold)
+                    } header: {
+                        Text("Create a New Tag")
+                    }
+                }
+                .sheet(isPresented: $tagModifySheetIsPresented) {
+                    if selectedTag != nil {
+                        IndividualTagEditor(tag: selectedTag!)
+                            .presentationDetents([.medium])
+                    }
+                    else {
+                        ProgressView()
+                    }
+                }
+                .onChange(of: selectedTag) { _, new in
+                    if new != nil {
+                        tagModifySheetIsPresented = true
+                    }
+                }
+                .onChange(of: tagModifySheetIsPresented) { _, new in
+                    if new == false {
+                        selectedTag = nil
+                    }
+                }
+                .onChange(of: allTags) { old, new in
+                    if old.count >= new.count {
+                        for tag in appliedTags! {
+                            if !allTags.contains(tag) {
+                                withAnimation {
+                                    appliedTags!.removeAll(where: { $0.id == tag.id })
+                                }
                             }
                         }
                     }
+                    
                 }
-                
             }
         }
     }

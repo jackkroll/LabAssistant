@@ -58,15 +58,6 @@ struct ChemicalStorageView: View {
         }
     }
 
-    private func addItem() {
-        withAnimation {
-            let newItem = Chemical(nickname: "Water", max: 100, current: 80)
-            newItem.tags.append(Tag(title: "Safe"))
-            newItem.expiryDate = .distantPast
-            modelContext.insert(newItem)
-        }
-    }
-
     private func deleteItems(offsets: IndexSet) {
         withAnimation {
             for index in offsets {
@@ -147,11 +138,13 @@ struct ChemCard: View {
                     SmallDate(date: chem.expiryDate!)
                 }
             }
-            HStack{
-                ForEach(chem.tags) { tag in
-                    TagRender(tag: tag)
+            if chem.tags != nil {
+                HStack{
+                    ForEach(chem.tags!) { tag in
+                        TagRender(tag: tag)
+                    }
+                    Spacer()
                 }
-                Spacer()
             }
             Gauge(value: chem.current, in: 0...chem.max) {
                 /*

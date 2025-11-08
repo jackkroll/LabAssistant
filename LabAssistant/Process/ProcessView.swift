@@ -32,7 +32,7 @@ struct ProcessView: View {
                                             .font(.title)
                                             .fontWeight(.bold)
                                         Spacer()
-                                        Text(process.steps.count.description + " steps")
+                                        Text(process.sortedSteps.count.description + " steps")
                                         if process.estTime != nil {
                                             Text(Int(process.estTime!/60).description + " min")
                                         }

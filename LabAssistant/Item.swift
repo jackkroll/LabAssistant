@@ -9,40 +9,16 @@ import Foundation
 import SwiftData
 import SwiftUI
 
-enum NamedColor: String, Codable, CaseIterable {
-    case red, orange, yellow, green, mint, teal, cyan, blue, indigo, purple, pink, brown, gray, black, white, clear
-
-    var color: Color {
-        switch self {
-        case .red: return .red
-        case .orange: return .orange
-        case .yellow: return .yellow
-        case .green: return .green
-        case .mint: return .mint
-        case .teal: return .teal
-        case .cyan: return .cyan
-        case .blue: return .blue
-        case .indigo: return .indigo
-        case .purple: return .purple
-        case .pink: return .pink
-        case .brown: return .brown
-        case .gray: return .gray
-        case .black: return .black
-        case .white: return .white
-        case .clear: return .clear
-        }
-    }
-}
-
 @Model
 final class Chemical {
-    var nickname: String
+    var nickname: String = "Untitled"
     var expiryDate: Date?
-    var max: Double
-    var current: Double
+    var max: Double = 500
+    var current: Double = 500
     var notes: String?
-    var tags : [Tag] = []
-    var units: Units
+    @Relationship(deleteRule: .nullify) var tags : [Tag]? = []
+    @Relationship(deleteRule: .nullify) var associatedSteps: [SingleStep]?
+    var units: Units = Units.ml
     
     init(nickname: String, expiryDate: Date? = nil, max: Double, current: Double, notes: String? = nil, tags: [Tag] = [], units: Units = .ml) {
         self.nickname = nickname
@@ -62,8 +38,9 @@ final class Chemical {
 
 @Model
 final class Tag : Identifiable, Equatable {
-    var title: String
-    var storedColor: String
+    var title: String = "Untitled"
+    @Relationship(inverse: \Chemical.tags) var associatedChemicals: [Chemical]?
+    var storedColor: String = colorToHex(resolvedColor: Color.Resolved(red: 84/255, green: 170/255, blue: 255/255))
     
     init(title: String, storedColor: String) {
         self.title = title
@@ -140,12 +117,15 @@ func colorToHex (resolvedColor:Color.Resolved, encodeAlpha: Bool = false) -> Str
 
 @Model
 final class DevProcess {
-    var nickname : String
-    var notes: String
-    var steps: [SingleStep]
+    var nickname : String = "Untitled"
+    var notes: String = ""
+    @Relationship(deleteRule: .cascade, inverse: \SingleStep.associatedProcess) var steps: [SingleStep]? = []
     var sortedSteps : [SingleStep] {
         get {
-            return steps.sorted(by: {$0.index < $1.index})
+            if steps == nil {
+                return []
+            }
+            return steps!.sorted(by: {$0.index < $1.index})
         }
         set {
             steps = newValue
@@ -154,7 +134,7 @@ final class DevProcess {
     
     var estTime: TimeInterval? {
         var time : TimeInterval? = nil
-        for step in steps {
+        for step in sortedSteps {
             if step.totalDuration != nil {
                 if time == nil {
                     time = 0
@@ -175,15 +155,16 @@ final class DevProcess {
 
 @Model
 final class SingleStep: Identifiable {
-    var id : UUID
-    var index: Int
-    var title: String
-    var notes: String
-    var autoAdvance: Bool
-    var associatedChemicals: [Chemical]
+    var id : UUID = UUID()
+    var index: Int = 0
+    var title: String = "Untitled"
+    var notes: String = ""
+    var autoAdvance: Bool = true
+    @Relationship(deleteRule: .nullify, inverse: \Chemical.associatedSteps) var associatedChemicals: [Chemical]? = []
+    @Relationship(deleteRule: .nullify) var associatedProcess: DevProcess?
 
     var totalDuration: TimeInterval?
-    var substep: SubstepProcess?
+    @Relationship(deleteRule: .cascade) var substep: SubstepProcess?
     
     init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, substep: SubstepProcess? = nil) {
         self.id = UUID()
@@ -199,9 +180,10 @@ final class SingleStep: Identifiable {
 
 @Model
 final class SubstepProcess {
-    var title: String
-    var duration: TimeInterval
-    var gap: TimeInterval
+    @Relationship(deleteRule: .nullify, inverse: \SingleStep.substep) var associatedStep: SingleStep?
+    var title: String = "Untitled"
+    var duration: TimeInterval = 30
+    var gap: TimeInterval = 30
     
     init(title: String, duration: TimeInterval, gap: TimeInterval) {
         self.title = title

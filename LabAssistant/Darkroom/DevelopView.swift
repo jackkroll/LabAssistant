@@ -31,9 +31,9 @@ struct DevelopView: View {
                         Text(step.title)
                             .fontWeight(.bold)
                             .font(.largeTitle)
-                        if step.associatedChemicals.count > 0 {
+                        if step.associatedChemicals != nil && step.associatedChemicals!.count > 0 {
                             HStack {
-                                ForEach(step.associatedChemicals) { chemical in
+                                ForEach(step.associatedChemicals!) { chemical in
                                     TagRender(tag: Tag(title: chemical.nickname))
                                 }
                             }

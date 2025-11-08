@@ -26,7 +26,7 @@ struct StepDetailView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         TextField("Duration (minutes) (optional)", text: $durationMinutes)
-                            .keyboardType(.numberPad)
+                            .keyboardType(.decimalPad)
                         Spacer()
                         Text("min")
                             .foregroundStyle(.secondary)
@@ -71,39 +71,40 @@ struct StepDetailView: View {
                     }
                 }
             }
-
-            Section("Associated Chemicals") {
-                if allChemicals.isEmpty {
-                    ContentUnavailableView("No chemicals in library", systemImage: "testtube.2", description: Text("Add chemicals to your library to use them here."))
-                } else {
-                    Picker("Add from library", selection: Binding<PersistentIdentifier?>(
-                        get: { selectedChemicalID },
-                        set: { newValue in
-                            selectedChemicalID = newValue
-                            guard let id = newValue, let chem = allChemicals.first(where: { $0.id == id }) else { return }
-                            if !step.associatedChemicals.contains(where: { $0.id == chem.id }) {
-                                step.associatedChemicals.append(chem)
+            if step.associatedChemicals != nil {
+                Section("Associated Chemicals") {
+                    if allChemicals.isEmpty {
+                        ContentUnavailableView("No chemicals in library", systemImage: "testtube.2", description: Text("Add chemicals to your library to use them here."))
+                    } else {
+                        Picker("Add from library", selection: Binding<PersistentIdentifier?>(
+                            get: { selectedChemicalID },
+                            set: { newValue in
+                                selectedChemicalID = newValue
+                                guard let id = newValue, let chem = allChemicals.first(where: { $0.id == id }) else { return }
+                                if !step.associatedChemicals!.contains(where: { $0.id == chem.id }) {
+                                    step.associatedChemicals!.append(chem)
+                                }
+                                // reset selection so the same item can be picked again later if removed
+                                selectedChemicalID = nil
                             }
-                            // reset selection so the same item can be picked again later if removed
-                            selectedChemicalID = nil
-                        }
-                    )) {
-                        Text("None").tag(PersistentIdentifier?.none)
-                        ForEach(allChemicals) { chem in
-                            Text(chem.nickname).tag(PersistentIdentifier?.some(chem.id))
+                        )) {
+                            Text("None").tag(PersistentIdentifier?.none)
+                            ForEach(allChemicals) { chem in
+                                Text(chem.nickname).tag(PersistentIdentifier?.some(chem.id))
+                            }
                         }
                     }
-                }
-                if !allChemicals.isEmpty {
-                    if step.associatedChemicals.isEmpty == false {
-                        ForEach(step.associatedChemicals, id: \.self) { chem in
-                            Text(chem.nickname)
+                    if !allChemicals.isEmpty {
+                        if step.associatedChemicals!.isEmpty == false {
+                            ForEach(step.associatedChemicals!, id: \.self) { chem in
+                                Text(chem.nickname)
+                            }
+                            .onDelete { indices in
+                                step.associatedChemicals!.remove(atOffsets: indices)
+                            }
+                        } else {
+                            ContentUnavailableView("No chemicals selected", systemImage: "testtube.2", description: Text("Pick from your chemicals library above."))
                         }
-                        .onDelete { indices in
-                            step.associatedChemicals.remove(atOffsets: indices)
-                        }
-                    } else {
-                        ContentUnavailableView("No chemicals selected", systemImage: "testtube.2", description: Text("Pick from your chemicals library above."))
                     }
                 }
             }
