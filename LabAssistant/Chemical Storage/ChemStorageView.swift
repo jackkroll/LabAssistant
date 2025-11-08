@@ -7,12 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import CloudKitSyncMonitor
 
 struct ChemicalStorageView: View {
     @Environment(\.modelContext) private var modelContext
+    @StateObject private var syncMonitor = SyncMonitor.default
     @Query private var items: [Chemical]
     @State var showAddChemicalSheet : Bool = false
-
+    @State var displayCloudStatusDetailSheet : Bool = false
     var body: some View {
         NavigationStack {
             VStack {
@@ -45,6 +47,13 @@ struct ChemicalStorageView: View {
             }
             .toolbar {
                 ToolbarItem {
+                    Image(systemName: syncMonitor.syncStateSummary.symbolName)
+                        .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
+                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolColor)
+                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolName)
+                }
+                ToolbarSpacer(.flexible)
+                ToolbarItem{
                     Button{
                         showAddChemicalSheet = true
                     } label: {

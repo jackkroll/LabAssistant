@@ -9,7 +9,6 @@ import SwiftUI
 import SwiftData
 
 struct HomeScreenView: View {
-    
     var body: some View {
         TabView {
             Tab("Chemicals", systemImage: "testtube.2"){

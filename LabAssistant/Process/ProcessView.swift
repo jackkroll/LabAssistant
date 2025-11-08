@@ -7,11 +7,14 @@
 
 import SwiftUI
 import SwiftData
+import CloudKitSyncMonitor
 
 struct ProcessView: View {
     @Environment(\.modelContext) private var modelContext
+    @StateObject private var syncMonitor = SyncMonitor.default
     @Query private var processes: [DevProcess]
     
+    @State var displayCloudStatusDetailSheet : Bool = false
     @State var addProcessSheet: Bool = false
     var body: some View {
         NavigationStack {
@@ -64,8 +67,16 @@ struct ProcessView: View {
                     Spacer()
                 }
             }
+            .padding()
             .toolbar {
                 ToolbarItem {
+                    Image(systemName: syncMonitor.syncStateSummary.symbolName)
+                        .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
+                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolColor)
+                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolName)
+                }
+                ToolbarSpacer()
+                ToolbarItem(placement: .primaryAction){
                     Button{
                         addProcessSheet = true
                     } label: {

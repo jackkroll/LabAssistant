@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		567C35542EBF948300D48E56 /* CloudKitSyncMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 567C35532EBF948300D48E56 /* CloudKitSyncMonitor */; };
 		56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */ = {isa = PBXBuildFile; productRef = 56EB2D9B2EB9969C008E7EF6 /* Onboarding */; };
 /* End PBXBuildFile section */
 
@@ -41,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */,
+				567C35542EBF948300D48E56 /* CloudKitSyncMonitor in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,6 +86,7 @@
 			name = LabAssistant;
 			packageProductDependencies = (
 				56EB2D9B2EB9969C008E7EF6 /* Onboarding */,
+				567C35532EBF948300D48E56 /* CloudKitSyncMonitor */,
 			);
 			productName = LabAssistant;
 			productReference = 56830FB42E89BDC40084D321 /* LabAssistant.app */;
@@ -115,6 +118,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				56EB2D9A2EB9969C008E7EF6 /* XCRemoteSwiftPackageReference "SwiftUI-Onboarding" */,
+				567C35522EBF948300D48E56 /* XCRemoteSwiftPackageReference "CloudKitSyncMonitor" */,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 56830FB52E89BDC40084D321 /* Products */;
@@ -360,6 +364,14 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+		567C35522EBF948300D48E56 /* XCRemoteSwiftPackageReference "CloudKitSyncMonitor" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/ggruen/CloudKitSyncMonitor.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 3.1.0;
+			};
+		};
 		56EB2D9A2EB9969C008E7EF6 /* XCRemoteSwiftPackageReference "SwiftUI-Onboarding" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/jackkroll/SwiftUI-Onboarding";
@@ -371,6 +383,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		567C35532EBF948300D48E56 /* CloudKitSyncMonitor */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 567C35522EBF948300D48E56 /* XCRemoteSwiftPackageReference "CloudKitSyncMonitor" */;
+			productName = CloudKitSyncMonitor;
+		};
 		56EB2D9B2EB9969C008E7EF6 /* Onboarding */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 56EB2D9A2EB9969C008E7EF6 /* XCRemoteSwiftPackageReference "SwiftUI-Onboarding" */;
