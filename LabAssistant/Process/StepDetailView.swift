@@ -31,7 +31,13 @@ struct StepDetailView: View {
                         Text("min")
                             .foregroundStyle(.secondary)
                     }
-                    .onChange(of: durationMinutes) { _, newValue in
+                    .onAppear {
+                        withAnimation {
+                            durationMinutes = step.totalDuration?.description ?? ""
+                        }
+                    }
+                    .onChange(of: durationMinutes) { oldValue, newValue in
+                        if oldValue == "" { return }
                         let trimmed = newValue.trimmingCharacters(in: .whitespaces)
                         if let mins = Double(trimmed), mins >= 0 {
                             step.totalDuration = Double(mins * 60)
@@ -186,13 +192,13 @@ private struct SubstepEditor: View {
 
 #Preview {
     @Previewable @State var step = SingleStep(
-        title: "",
+        title: "Test Step",
         index: 0,
-        notes: "",
+        notes: "Simple Notes",
         autoAdvance: true,
         associatedChemicals: [Chemical(nickname: "NaCl", max: 100, current: 50)],
         totalDuration: 600,
-        substep: SubstepProcess(title:"Untitled", duration:15, gap: 45)
+        substep: SubstepProcess(title:"Untitled Process", duration:15, gap: 45)
     )
     NavigationStack {
         StepDetailView(step: $step)

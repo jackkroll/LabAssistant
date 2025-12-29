@@ -1,5 +1,5 @@
 {
-  "originHash" : "7d0e6f9428ebfb582cf83a737bf5cec50bf23275341ad6739c4ae2013e68e1fa",
+  "originHash" : "93312277f853c839ef5a87dd4782f2aba87f88a1c387f309373037ff404ef780",
   "pins" : [
     {
       "identity" : "cloudkitsyncmonitor",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/jackkroll/SwiftUI-Onboarding",
       "state" : {
-        "branch" : "main",
-        "revision" : "e1a762d57757c2427c1871b86d47f43b1fd0b45c"
+        "branch" : "opt-privacy-sheet",
+        "revision" : "d9546814be840ac83b6fafb88aea9949b3bd53bc"
       }
     }
   ],

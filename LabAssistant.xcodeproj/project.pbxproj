@@ -376,7 +376,7 @@
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/jackkroll/SwiftUI-Onboarding";
 			requirement = {
-				branch = main;
+				branch = "opt-privacy-sheet";
 				kind = branch;
 			};
 		};

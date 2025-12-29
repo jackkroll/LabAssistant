@@ -46,14 +46,15 @@ struct DevelopView: View {
                     
                     if timeRemaining != nil  || subprocessTimeRemaining != nil {
                         OrientationAdaptiveStack {
-                            if timeRemaining != nil {
-                                Text(timeRemaining!.formatToMinSec())
-                                    .contentTransition(.numericText(countsDown: true))
-                                    .font(.system(size: 100, weight: .black, design: .monospaced))
-                                    .minimumScaleFactor(0.01)
-                                    .padding()
-                                    .frame(maxWidth: .infinity)
-                                    
+                            if let timeRemaining = timeRemaining {
+                                    Text(timeRemaining.formatToMinSec())
+                                        .contentTransition(.numericText(countsDown: true))
+                                        .font(.system(size: 100, weight: .black, design: .monospaced))
+                                        .minimumScaleFactor(0.01)
+                                        .padding()
+                                        .frame(maxWidth: .infinity)
+                                        .foregroundStyle(timeRemaining < 0 ? .red : .primary)
+                                        .frame(maxHeight: 150)
                             }
                            
                             if step.substep != nil && subprocessTimeRemaining != nil && subprocessBufferRemaining != nil {
@@ -87,7 +88,7 @@ struct DevelopView: View {
                                         }
                                     }
                                     .foregroundStyle(subprocessTimeRemaining! > 0 ? .green : .gray)
-                                    .frame(maxWidth:.infinity)
+                                    .frame(maxWidth: 500)
                                 }
                                 
                             }
@@ -99,18 +100,11 @@ struct DevelopView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+           loadPage()
+        }
         .onChange(of: selectedTab) {
-            timer?.invalidate()
-            isPaused = false
-            let newStep = process.sortedSteps[selectedTab]
-            
-            timeRemaining = newStep.totalDuration
-            subprocessTimeRemaining = newStep.substep?.duration
-            subprocessBufferRemaining = subprocessTimeRemaining != nil ? 0 : nil
-            
-            if timeRemaining != nil || subprocessTimeRemaining != nil {
-                generateNewTimer(newStep: newStep)
-            }
+            loadPage()
         }
         
     }
@@ -133,6 +127,21 @@ struct DevelopView: View {
                     .disabled(step.index == 0)
                     
                     Spacer()
+                    //if isPaused {
+                        Button {
+                            withAnimation {
+                                loadPage(unpause: !isPaused)
+                            }
+                        } label: {
+                            Image(systemName: "arrow.counterclockwise.circle.fill")
+                                .symbolRenderingMode(.hierarchical)
+                                .resizable()
+                                .scaledToFit()
+                                .frame(width: 75, height: 75)
+                                .contentTransition(.symbolEffect(.replace))
+                        }
+                        .animation(.easeInOut, value: isPaused)
+                    //}
                     
                     if step.totalDuration != nil || step.substep?.duration != nil {
                         Button {
@@ -142,7 +151,9 @@ struct DevelopView: View {
                             else {
                                 timer?.invalidate()
                             }
-                            isPaused.toggle()
+                            withAnimation {
+                                isPaused.toggle()
+                            }
                         } label: {
                             Image(systemName: isPaused ? "play.circle.fill" : "pause.circle.fill")
                                 .symbolRenderingMode(.hierarchical)
@@ -173,6 +184,22 @@ struct DevelopView: View {
             }
             
         }
+    
+    func loadPage(unpause: Bool = true) {
+        timer?.invalidate()
+        isPaused = !unpause
+        let newStep = process.sortedSteps[selectedTab]
+        
+        timeRemaining = newStep.totalDuration
+        subprocessTimeRemaining = newStep.substep?.duration
+        subprocessBufferRemaining = subprocessTimeRemaining != nil ? 0 : nil
+        
+        if timeRemaining != nil || subprocessTimeRemaining != nil {
+            if unpause {
+                generateNewTimer(newStep: newStep)
+            }
+        }
+    }
 
     
     func generateNewTimer(newStep: SingleStep) {
@@ -188,7 +215,16 @@ struct DevelopView: View {
                 timeRemaining! -= 1
                 if timeRemaining! <= 0 && newStep.autoAdvance{
                     withAnimation {
-                        selectedTab += 1
+                        if selectedTab < process.sortedSteps.count - 1 {
+                            selectedTab += 1
+                        }
+                        // auto advance on last step, pause
+                        else {
+                            timer?.invalidate()
+                            withAnimation {
+                                isPaused = true
+                            }
+                        }
                     }
                 }
             }
@@ -216,9 +252,10 @@ struct DevelopView: View {
 extension TimeInterval {
     func formatToMinSec() -> String {
         let totalSeconds = Int(self)
-        let minutes = (totalSeconds / 60) % 60
-        let seconds = totalSeconds % 60
-        return String(format: "%02d:%02d", minutes, seconds)
+        let minutes = abs((totalSeconds / 60) % 60)
+        let seconds = abs(totalSeconds % 60)
+        let isNegative = self < 0
+        return String(format: "\(isNegative ? "-" : "")%02d:%02d", minutes, seconds)
     }
 }
 
@@ -232,9 +269,9 @@ extension TimeInterval {
             title: "Prepare Chemicals",
             index: 0,
             notes: "Mix Ilfotec DD-X 1+4 at 20°C. Prepare stop and fixer.",
-            autoAdvance: true,
+            autoAdvance: false,
             associatedChemicals: [],
-            totalDuration: nil,
+            totalDuration: 5,
             substep: nil
         ),
         SingleStep(
@@ -279,7 +316,7 @@ extension TimeInterval {
             notes: "Photo-Flo per instructions. Hang to dry.",
             autoAdvance: true,
             associatedChemicals: [],
-            totalDuration: 60,
+            totalDuration: 2,
             substep: nil
         )
     ]

@@ -30,10 +30,7 @@ struct LabAssistantApp: App {
             HomeScreenView()
                 .showOnboardingIfNeeded(
                     config: .production,
-                    appIcon: Image("AppIcon"),
-                    dataPrivacyContent: {
-                        
-                    }
+                    appIcon: Image("AppIcon")
                 )
             
         }

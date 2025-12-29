@@ -8,6 +8,7 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import CloudKit
 
 @Model
 final class Chemical {
@@ -116,10 +117,11 @@ func colorToHex (resolvedColor:Color.Resolved, encodeAlpha: Bool = false) -> Str
 }
 
 @Model
-final class DevProcess {
+final class DevProcess : Equatable {
     var nickname : String = "Untitled"
     var notes: String = ""
     @Relationship(deleteRule: .cascade, inverse: \SingleStep.associatedProcess) var steps: [SingleStep]? = []
+    //@Relationship(deleteRule: .noAction, inverse: \DownloadableProcess.devProcess) var downloadableProcess: DownloadableProcess? = nil
     var sortedSteps : [SingleStep] {
         get {
             if steps == nil {
@@ -151,10 +153,54 @@ final class DevProcess {
         self.steps = steps
     }
     
+    convenience init(nickname: String, notes: String, steps: [SingleStep]?) {
+        self.init(nickname: nickname, notes: notes, steps: steps ?? [])
+    }
+
+    convenience init?(record: CKRecord) {
+        record["isApproved"] = nil
+        record["uploadUser"] = nil
+        let nickname = record["nickname"] as? String ?? "Untitled"
+        let notes = record["notes"] as? String ?? ""
+        
+        
+        var builtSteps: [SingleStep] = []
+        let stepData: Data? = record["stepsData"] as? Data
+        if stepData != nil {
+            do {
+                struct StepDTO: Codable { let title: String; let index: Int; let notes: String?; let autoAdvance: Bool?; let totalDuration: Double?; let substepTitle: String?; let substepDuration: Double?; let substepGap: Double? }
+                let decoded = try JSONDecoder().decode([StepDTO].self, from: stepData!)
+                builtSteps = decoded.map { dto in
+                    let sub: SubstepProcess? = {
+                        if let st = dto.substepTitle, let d = dto.substepDuration, let g = dto.substepGap {
+                            return SubstepProcess(title: st, duration: d, gap: g)
+                        }
+                        return nil
+                    }()
+                    return SingleStep(
+                        title: dto.title,
+                        index: dto.index,
+                        notes: dto.notes ?? "",
+                        autoAdvance: dto.autoAdvance ?? true,
+                        associatedChemicals: [],
+                        totalDuration: dto.totalDuration,
+                        substep: sub
+                    )
+                }
+            } catch {
+                // If steps JSON is malformed, fall back to empty steps
+                print("malformed")
+                builtSteps = []
+            }
+        }
+
+        self.init(nickname: nickname, notes: notes, steps: builtSteps)
+        // `downloadableProcess` will remain nil unless explicitly set later
+    }
 }
 
 @Model
-final class SingleStep: Identifiable {
+final class SingleStep: Identifiable, Codable {
     var id : UUID = UUID()
     var index: Int = 0
     var title: String = "Untitled"
@@ -165,6 +211,32 @@ final class SingleStep: Identifiable {
 
     var totalDuration: TimeInterval?
     @Relationship(deleteRule: .cascade) var substep: SubstepProcess?
+
+    private enum CodingKeys: String, CodingKey { case id, index, title, notes, autoAdvance, totalDuration, substep }
+
+    required init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.id = try c.decode(UUID.self, forKey: .id)
+        self.index = try c.decode(Int.self, forKey: .index)
+        self.title = try c.decode(String.self, forKey: .title)
+        self.notes = try c.decode(String.self, forKey: .notes)
+        self.autoAdvance = try c.decode(Bool.self, forKey: .autoAdvance)
+        self.associatedChemicals = []
+        self.associatedProcess = nil
+        self.totalDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .totalDuration)
+        self.substep = try c.decodeIfPresent(SubstepProcess.self, forKey: .substep)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(id, forKey: .id)
+        try c.encode(index, forKey: .index)
+        try c.encode(title, forKey: .title)
+        try c.encode(notes, forKey: .notes)
+        try c.encode(autoAdvance, forKey: .autoAdvance)
+        try c.encodeIfPresent(totalDuration, forKey: .totalDuration)
+        try c.encodeIfPresent(substep, forKey: .substep)
+    }
     
     init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, substep: SubstepProcess? = nil) {
         self.id = UUID()
@@ -176,14 +248,35 @@ final class SingleStep: Identifiable {
         self.totalDuration = totalDuration
         self.substep = substep
     }
+    
+    convenience init(title: String, index: Int) {
+        self.init(title: title, index: index, notes: "", autoAdvance: true, associatedChemicals: [], totalDuration: nil, substep: nil)
+    }
 }
 
 @Model
-final class SubstepProcess {
+final class SubstepProcess: Codable {
     @Relationship(deleteRule: .nullify, inverse: \SingleStep.substep) var associatedStep: SingleStep?
     var title: String = "Untitled"
     var duration: TimeInterval = 30
     var gap: TimeInterval = 30
+
+    private enum CodingKeys: String, CodingKey { case title, duration, gap }
+
+    required init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.associatedStep = nil
+        self.title = try c.decode(String.self, forKey: .title)
+        self.duration = try c.decode(TimeInterval.self, forKey: .duration)
+        self.gap = try c.decode(TimeInterval.self, forKey: .gap)
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(title, forKey: .title)
+        try c.encode(duration, forKey: .duration)
+        try c.encode(gap, forKey: .gap)
+    }
     
     init(title: String, duration: TimeInterval, gap: TimeInterval) {
         self.title = title
@@ -191,3 +284,19 @@ final class SubstepProcess {
         self.gap = gap
     }
 }
+
+@Model
+final class DownloadableProcess: Identifiable {
+    var id: UUID = UUID()
+    var approved: Bool = false
+    var userSubmissionID: String
+    @Relationship(deleteRule: .nullify) var devProcess: DevProcess
+    
+    init(id: UUID, userSubmissionID: String, devProcess: DevProcess) {
+        self.id = id
+        self.approved = false
+        self.userSubmissionID = userSubmissionID
+        self.devProcess = devProcess
+    }
+}
+
