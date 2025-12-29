@@ -108,6 +108,12 @@ struct DevelopView: View {
         }
         
     }
+        .onAppear {
+            UIApplication.shared.isIdleTimerDisabled = true
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         .safeAreaInset(edge: .bottom) {
             let step = process.sortedSteps[selectedTab]

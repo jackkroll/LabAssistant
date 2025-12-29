@@ -33,7 +33,7 @@ struct StepDetailView: View {
                     }
                     .onAppear {
                         withAnimation {
-                            durationMinutes = step.totalDuration?.description ?? ""
+                            durationMinutes = ((step.totalDuration ?? 0)/60).description
                         }
                     }
                     .onChange(of: durationMinutes) { oldValue, newValue in
