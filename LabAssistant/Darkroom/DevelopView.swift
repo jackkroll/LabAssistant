@@ -10,7 +10,7 @@ import Combine
 
 struct DevelopView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
-    
+    @Environment(\.dismiss) var dismiss
     @State var selectedTab: Int = 0
     @State var timeRemaining : TimeInterval?
     
@@ -99,6 +99,8 @@ struct DevelopView: View {
                 .tag(step.index)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
+        .toolbar(.hidden, for: .tabBar)
+        .toolbar(.hidden, for: .navigationBar)
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
            loadPage()
@@ -120,20 +122,25 @@ struct DevelopView: View {
                 HStack {
                     Button {
                         withAnimation {
-                            selectedTab -= 1
+                            if step.index == 0 {
+                                dismiss()
+                            }
+                            else {
+                                selectedTab -= 1
+                            }
                         }
                     } label: {
-                        Image(systemName: "arrow.left.circle.fill")
+                        Image(systemName: step.index == 0 ? "xmark.circle.fill" : "arrow.left.circle.fill")
                             .symbolRenderingMode(.hierarchical)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 75, height: 75)
                             .contentTransition(.symbolEffect(.replace))
                     }
-                    .disabled(step.index == 0)
                     
                     Spacer()
-                    //if isPaused {
+                    
+                    if step.totalDuration != nil || step.substep?.duration != nil {
                         Button {
                             withAnimation {
                                 loadPage(unpause: !isPaused)
@@ -147,9 +154,7 @@ struct DevelopView: View {
                                 .contentTransition(.symbolEffect(.replace))
                         }
                         .animation(.easeInOut, value: isPaused)
-                    //}
-                    
-                    if step.totalDuration != nil || step.substep?.duration != nil {
+                        
                         Button {
                             if isPaused {
                                 generateNewTimer(newStep: step)
@@ -175,16 +180,20 @@ struct DevelopView: View {
                     
                     Button {
                         withAnimation {
-                            selectedTab += 1
+                            if selectedTab == process.sortedSteps.count - 1 {
+                                dismiss()
+                            }
+                            else {
+                                selectedTab += 1
+                            }
                         }
                     } label: {
-                        Image(systemName: "arrow.right.circle.fill")
+                        Image(systemName: selectedTab == process.sortedSteps.count - 1 ? "xmark.circle.fill" : "arrow.right.circle.fill")
                             .symbolRenderingMode(.hierarchical)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 75, height: 75)
                     }
-                    .disabled(selectedTab == process.sortedSteps.count - 1)
                 }
                 .padding()
             }
