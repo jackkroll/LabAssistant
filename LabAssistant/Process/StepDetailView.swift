@@ -37,7 +37,6 @@ struct StepDetailView: View {
                         }
                     }
                     .onChange(of: durationMinutes) { oldValue, newValue in
-                        if oldValue == "" { return }
                         let trimmed = newValue.trimmingCharacters(in: .whitespaces)
                         if let mins = Double(trimmed), mins >= 0 {
                             step.totalDuration = Double(mins * 60)
