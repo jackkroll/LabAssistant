@@ -6,12 +6,14 @@ import SwiftData
 struct StepDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @Binding var step: SingleStep
-
+    
     @State private var durationMinutes: String = ""
     @Query private var allChemicals: [Chemical]
     @State private var selectedChemicalID: PersistentIdentifier?
     @State private var isEditingSubstep: Bool = false
-
+    
+    @State private var displayRemovalAlert: Bool = false
+    
     var body: some View {
         Form {
             Section("Details") {
@@ -21,12 +23,14 @@ struct StepDetailView: View {
                 TextField("Notes", text: $step.notes, axis: .vertical)
                     .multilineTextAlignment(.leading)
             }
-
+            
             Section("Timing") {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack {
                         TextField("Duration (minutes) (optional)", text: $durationMinutes)
                             .keyboardType(.decimalPad)
+                            .contentTransition(.numericText())
+                            .animation(.easeInOut, value: durationMinutes)
                         Spacer()
                         Text("min")
                             .foregroundStyle(.secondary)
@@ -45,8 +49,93 @@ struct StepDetailView: View {
                         }
                     }
                 }
-
+                
                 Toggle("Auto-advance", isOn: $step.autoAdvance)
+            }
+            Section {
+                ForEach((step.tempDuration ?? []).sorted(by: { $0.duration > $1.duration })) { temp in
+                    let isSelected: Bool = step.totalDuration.map { $0 == temp.duration } ?? false
+                    VStack{
+                        HStack {
+                            Text(temp.duration.formatToMinSec())
+                            if let temperature = temp.temperature{
+                                Text("@")
+                                Text("\(temperature.formatted())\(temp.units.symbol)")
+                            }
+                        }
+                        .font(.title3)
+                        .padding(.horizontal)
+                        HStack {
+                            Button(isSelected ? "Selected" : "Select") {
+                                // If the selection would delete the current timing that isn't already a preset
+                                if !(step.tempDuration?.contains(where: { $0.duration == step.totalDuration }) ?? false) && step.totalDuration != nil{
+                                    displayRemovalAlert = true
+                                }
+                                else {
+                                    selectPreset(preset: temp)
+                                }
+                                
+                            }
+                            .alert(
+                                "Warning",
+                                isPresented: $displayRemovalAlert
+                            ) {
+                                Button("Create a new preset", role: .confirm) {
+                                    step.tempDuration?.append(.init(temperature: nil, duration: step.totalDuration ?? 60))
+                                    selectPreset(preset: temp)
+                                }
+                                .keyboardShortcut(.defaultAction)
+                                Button(role: .destructive) {
+                                    selectPreset(preset: temp)
+                                } label: {
+                                    Text("Replace")
+                                }
+                            } message: {
+                                Text("There is not a preset with the current timing")
+                            }
+                            
+                            .disabled(isSelected)
+                            .buttonStyle(.borderedProminent)
+                            .buttonSizing(.flexible)
+                            
+                            
+                            NavigationLink {
+                                TempDurationEditorView(step: step, inputTempDuration: temp)
+                            } label: {
+                                Text("Edit")
+                                    .frame(maxWidth: .infinity)
+                                    .padding(7)
+                                    .background(.orange)
+                                    .clipShape(.capsule)
+                                
+                            }
+                            .navigationLinkIndicatorVisibility(.hidden)
+                            
+                            Button("Remove", role: .destructive) {
+                                step.tempDuration?.removeAll(where: { $0.duration == temp.duration && $0.temperature == temp.temperature && $0.units == temp.units })
+                            }
+                            .buttonStyle(.borderedProminent)
+                            .buttonSizing(.flexible)
+                            
+                        }
+                        
+                        
+                    }
+                    
+                }
+                NavigationLink {
+                    TempDurationEditorView(step: step)
+                    
+                } label: {
+                    Label("Add Options", systemImage: "plus")
+                        .foregroundStyle(.blue)
+                }
+                .navigationLinkIndicatorVisibility(.hidden)
+                
+            } header: {
+                Text("Temperature Time Presets")
+            } footer : {
+                Text("Add presets to easily select the correct temperature when you're ready to develop")
             }
             
             Section("Substep") {
@@ -113,7 +202,7 @@ struct StepDetailView: View {
                     }
                 }
             }
-
+            
             
         }
         .navigationTitle("Edit Step")
@@ -125,11 +214,8 @@ struct StepDetailView: View {
                         .navigationTitle("Edit Substep")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar {
-                            ToolbarItem(placement: .cancellationAction) {
-                                Button("Cancel") { isEditingSubstep = false }
-                            }
                             ToolbarItem(placement: .confirmationAction) {
-                                Button("Done") { isEditingSubstep = false }
+                                Button(role: .confirm) { isEditingSubstep = false }
                             }
                         }
                 } else {
@@ -138,6 +224,143 @@ struct StepDetailView: View {
             }
         }
     }
+    
+    private func selectPreset(preset: TemperatureDuration) {
+        withAnimation {
+            step.totalDuration = preset.duration
+            durationMinutes = (preset.duration / 60).description
+        }
+    }
+}
+private struct TempDurationEditorView: View {
+    @Environment(\.dismiss) private var dismiss
+    let step: SingleStep
+    var inputTempDuration: TemperatureDuration? = nil
+    @State private var temperature: Double? = 20
+    @State private var units: UnitTemperature = .celsius
+    @State private var selectedMinutes: Int = 9
+    @State private var selectedSeconds: Int = 30
+    @State private var temperatureDenoted: Bool = true
+    
+    @State private var editsMade: Bool = false
+    let formatter: NumberFormatter = {
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        return formatter
+    }()
+    var body: some View {
+        VStack {
+            Form {
+                Section("Temperature") {
+                    
+                    HStack {
+                        TextField("Temperature Preset", value: $temperature, formatter: formatter)
+                            .keyboardType(.decimalPad)
+                            .foregroundStyle(temperatureDenoted ? .primary : .secondary)
+                        Picker("Units", selection: $units) {
+                            ForEach([UnitTemperature.celsius, UnitTemperature.fahrenheit], id: \.self) { temperature in
+                                Text(temperature.symbol)
+                            }
+                        }
+                        .pickerStyle(.palette)
+                        
+                    }
+                    .disabled(!temperatureDenoted)
+                    Toggle("Modify Step Temperature", isOn: $temperatureDenoted)
+                        .onChange(of: temperatureDenoted) { _,newValue in
+                            if !newValue {
+                                temperature = nil
+                            }
+                            else {
+                                switch units {
+                                case .celsius:
+                                    temperature = 20
+                                case .fahrenheit:
+                                    temperature = 68
+                                default:
+                                    temperature = 20
+                                }
+                            }
+                        }
+                }
+                Section("Duration") {
+                    VStack {
+                        HStack {
+                            Picker("Minutes", selection: $selectedMinutes) {
+                                ForEach(0..<60) { i in Text("\(i) min").tag(i) }
+                            }
+                            Text(":")
+                            Picker("Seconds", selection: $selectedSeconds) {
+                                ForEach(0..<60) { i in
+                                    HStack {
+                                        Text(i, format: .number.precision(.integerLength(2...)))
+                                        Text("sec")
+                                    }
+                                    .tag(i)
+                                }
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                    }
+                }
+            }
+            .onChange(of: validateEditsMade()) { _, new in
+                editsMade = new
+            }
+            .onAppear {
+                if let tempDuration = inputTempDuration {
+                    temperature = tempDuration.temperature
+                    units = tempDuration.units
+                    let minutes = Int(tempDuration.duration.rounded(.down) / 60)
+                    let seconds = Int(tempDuration.duration.rounded(.down).truncatingRemainder(dividingBy: 60))
+                    selectedMinutes = minutes
+                    selectedSeconds = seconds
+                    temperatureDenoted = tempDuration.temperature != nil
+                }
+                
+            }
+            
+        }
+        .toolbar {
+            let shouldAdd = inputTempDuration == nil
+            ToolbarItem(placement: .topBarLeading) {
+                Button(role: shouldAdd ? .destructive : .cancel) {
+                    dismiss()
+                }
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button(role: .confirm) {
+                    if shouldAdd {
+                        if step.tempDuration == nil {
+                            step.tempDuration = []
+                        }
+                        step.tempDuration?.append(
+                            .init(
+                                temperature: temperature,
+                                units: units,
+                                duration: TimeInterval(((selectedMinutes * 60) + selectedSeconds)))
+                        )
+                    }
+                    else if let tempDuration = inputTempDuration{
+                        tempDuration.temperature = temperature
+                        tempDuration.units = units
+                        tempDuration.duration = TimeInterval(((selectedMinutes * 60) + selectedSeconds))
+                    }
+                    dismiss()
+                }
+                .disabled(!editsMade && inputTempDuration != nil)
+                
+            }
+            
+        }
+        .navigationBarBackButtonHidden()
+    }
+    func validateEditsMade() -> Bool {
+        guard let inputTempDuration else { return true }
+        return inputTempDuration.temperature != temperature
+        || inputTempDuration.units != units
+        || Int(inputTempDuration.duration.rounded(.down)) != ((selectedMinutes * 60) + selectedSeconds)
+    }
 }
 
 private struct SubstepEditor: View {
@@ -145,14 +368,14 @@ private struct SubstepEditor: View {
     @State private var title: String = ""
     @State private var durationText: String = ""
     @State private var gapText: String = ""
-
+    
     init(substep: Binding<SubstepProcess>) {
         self._substep = substep
         self._title = State(initialValue: substep.wrappedValue.title)
         self._durationText = State(initialValue: String(substep.wrappedValue.duration))
         self._gapText = State(initialValue: String(substep.wrappedValue.gap))
     }
-
+    
     var body: some View {
         Form {
             Section("Basics") {
@@ -197,9 +420,32 @@ private struct SubstepEditor: View {
         autoAdvance: true,
         associatedChemicals: [Chemical(nickname: "NaCl", max: 100, current: 50)],
         totalDuration: 600,
-        substep: SubstepProcess(title:"Untitled Process", duration:15, gap: 45)
+        substep: SubstepProcess(title:"Untitled Process", duration:15, gap: 45),
+        tempDuration: [
+            TemperatureDuration(temperature: 68, units: .fahrenheit, duration: 9.5 * 60),
+            TemperatureDuration(temperature: 23, units: .celsius, duration: 10.5 * 60),
+            TemperatureDuration(temperature: nil, duration: 60)
+        ]
     )
     NavigationStack {
         StepDetailView(step: $step)
     }
 }
+
+#Preview {
+    @Previewable @State var step = SingleStep(
+        title: "Test Step",
+        index: 0,
+        notes: "Simple Notes",
+        autoAdvance: true,
+        associatedChemicals: [Chemical(nickname: "NaCl", max: 100, current: 50)],
+        totalDuration: 600,
+        substep: SubstepProcess(title:"Untitled Process", duration:15, gap: 45),
+        tempDuration: [
+            TemperatureDuration(temperature: 68, units: .fahrenheit, duration: 9.5 * 60),
+            TemperatureDuration(temperature: 23, units: .celsius, duration: 10.5 * 60)
+        ]
+    )
+    TempDurationEditorView(step: step)
+}
+

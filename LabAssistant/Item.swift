@@ -211,8 +211,9 @@ final class SingleStep: Identifiable, Codable {
 
     var totalDuration: TimeInterval?
     @Relationship(deleteRule: .cascade) var substep: SubstepProcess?
+    @Relationship(deleteRule: .cascade, inverse: \TemperatureDuration.associatedStep) var tempDuration: [TemperatureDuration]? = nil
 
-    private enum CodingKeys: String, CodingKey { case id, index, title, notes, autoAdvance, totalDuration, substep }
+    private enum CodingKeys: String, CodingKey { case id, index, title, notes, autoAdvance, totalDuration, substep, tempDuration }
 
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -225,6 +226,7 @@ final class SingleStep: Identifiable, Codable {
         self.associatedProcess = nil
         self.totalDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .totalDuration)
         self.substep = try c.decodeIfPresent(SubstepProcess.self, forKey: .substep)
+        self.tempDuration = try c.decodeIfPresent([TemperatureDuration].self, forKey: .tempDuration)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -236,9 +238,10 @@ final class SingleStep: Identifiable, Codable {
         try c.encode(autoAdvance, forKey: .autoAdvance)
         try c.encodeIfPresent(totalDuration, forKey: .totalDuration)
         try c.encodeIfPresent(substep, forKey: .substep)
+        try c.encodeIfPresent(tempDuration, forKey: .tempDuration)
     }
     
-    init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, substep: SubstepProcess? = nil) {
+    init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, substep: SubstepProcess? = nil, tempDuration: [TemperatureDuration]? = nil) {
         self.id = UUID()
         self.title = title
         self.index = index
@@ -247,10 +250,76 @@ final class SingleStep: Identifiable, Codable {
         self.associatedChemicals = associatedChemicals
         self.totalDuration = totalDuration
         self.substep = substep
+        self.tempDuration = tempDuration
     }
     
     convenience init(title: String, index: Int) {
         self.init(title: title, index: index, notes: "", autoAdvance: true, associatedChemicals: [], totalDuration: nil, substep: nil)
+    }
+}
+
+@Model
+final class TemperatureDuration: Codable {
+    @Relationship(deleteRule: .nullify) var associatedStep: SingleStep?
+    var temperature: Double? = 20
+    private var unitsSymbolStorage: String? = UnitTemperature.celsius.symbol
+    var duration: TimeInterval = 0
+    var measurement: Measurement<UnitTemperature>? {
+        if let temperature = temperature{
+            Measurement(value: temperature, unit: units)
+        }
+        else {
+            nil
+        }
+    }
+    var units: UnitTemperature {
+        get {
+            switch unitsSymbolStorage {
+            case UnitTemperature.celsius.symbol:
+                return .celsius
+            case UnitTemperature.fahrenheit.symbol:
+                return .fahrenheit
+            case UnitTemperature.kelvin.symbol:
+                return .kelvin
+            default:
+                return .celsius
+            }
+        }
+        set {
+
+            unitsSymbolStorage = newValue.symbol
+
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey { case temperature, unitsSymbol, duration }
+
+    init(temperature: Double?, units: UnitTemperature? = .celsius, duration: TimeInterval) {
+        self.temperature = temperature
+        self.unitsSymbolStorage = units?.symbol
+        self.duration = duration
+    }
+
+    required init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        self.temperature = try c.decode(Double.self, forKey: .temperature)
+        self.duration = try c.decode(TimeInterval.self, forKey: .duration)
+        let symbol = try c.decodeIfPresent(String.self, forKey: .unitsSymbol) ?? UnitTemperature.celsius.symbol
+        switch symbol {
+        case UnitTemperature.celsius.symbol,
+             UnitTemperature.fahrenheit.symbol,
+             UnitTemperature.kelvin.symbol:
+            self.unitsSymbolStorage = symbol
+        default:
+            self.unitsSymbolStorage = UnitTemperature.celsius.symbol
+        }
+    }
+
+    func encode(to encoder: Encoder) throws {
+        var c = encoder.container(keyedBy: CodingKeys.self)
+        try c.encode(temperature, forKey: .temperature)
+        try c.encode(duration, forKey: .duration)
+        try c.encode(unitsSymbolStorage, forKey: .unitsSymbol)
     }
 }
 
@@ -284,19 +353,3 @@ final class SubstepProcess: Codable {
         self.gap = gap
     }
 }
-
-@Model
-final class DownloadableProcess: Identifiable {
-    var id: UUID = UUID()
-    var approved: Bool = false
-    var userSubmissionID: String
-    @Relationship(deleteRule: .nullify) var devProcess: DevProcess
-    
-    init(id: UUID, userSubmissionID: String, devProcess: DevProcess) {
-        self.id = id
-        self.approved = false
-        self.userSubmissionID = userSubmissionID
-        self.devProcess = devProcess
-    }
-}
-

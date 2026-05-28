@@ -21,6 +21,10 @@ struct DevelopView: View {
     @State var timer : Timer? = nil
     
     @State var isPaused : Bool = false
+    @State var displayTempTimeOptions : Bool = false
+    var currentStep : SingleStep {
+        process.sortedSteps[selectedTab]
+    }
 
     var process : DevProcess
     var body: some View {
@@ -55,6 +59,11 @@ struct DevelopView: View {
                                         .frame(maxWidth: .infinity)
                                         .foregroundStyle(timeRemaining < 0 ? .red : .primary)
                                         .frame(maxHeight: 150)
+                                        .onLongPressGesture {
+                                            withAnimation {
+                                                displayTempTimeOptions = true
+                                            }
+                                        }
                             }
                            
                             if step.substep != nil && subprocessTimeRemaining != nil && subprocessBufferRemaining != nil {
@@ -96,6 +105,7 @@ struct DevelopView: View {
                         }
                     }
                 }
+                
                 .tag(step.index)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -108,6 +118,10 @@ struct DevelopView: View {
         .onChange(of: selectedTab) {
             loadPage()
         }
+        .sheet(isPresented: $displayTempTimeOptions) {
+            TempSelectionSheet(step: currentStep)
+                .presentationDetents([.medium, .large])
+        }
         
     }
         .onAppear {
@@ -117,6 +131,7 @@ struct DevelopView: View {
             UIApplication.shared.isIdleTimerDisabled = false
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
+        
         .safeAreaInset(edge: .bottom) {
             let step = process.sortedSteps[selectedTab]
                 HStack {
@@ -296,7 +311,8 @@ extension TimeInterval {
             autoAdvance: false,
             associatedChemicals: [],
             totalDuration: 9 * 60,
-            substep: agitation
+            substep: agitation,
+            tempDuration: [.init(temperature: 20, duration: 6*60)]
         ),
         SingleStep(
             title: "Stop Bath",

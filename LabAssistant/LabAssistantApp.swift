@@ -14,7 +14,11 @@ struct LabAssistantApp: App {
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Chemical.self,
-            DevProcess.self
+            Tag.self,
+            DevProcess.self,
+            SingleStep.self,
+            SubstepProcess.self,
+            TemperatureDuration.self
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
         
