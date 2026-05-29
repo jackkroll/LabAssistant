@@ -8,15 +8,19 @@
 import SwiftUI
 
 struct TempSelectionSheet: View {
+    @Environment(\.dismiss) private var dismiss
     let step : SingleStep
     @State private var displayRemovalAlert: Bool = false
     var body: some View {
         ScrollView{
             if let tempDuration = step.tempDuration, tempDuration.count > 0 {
                 if let totalDuration = step.totalDuration {
+                    HStack{
+                        Text("Current")
+                            .bold()
+                        Spacer()
+                    }
                     HStack {
-                        
-                        Text("Current:")
                         Text("\(totalDuration.formatToMinSec())")
                         if let correspondingPreset = step.tempDuration?.first(where: {$0.duration == totalDuration}), let temperature = correspondingPreset.temperature {
                             Text("@ \(temperature.formatted(.number))\(correspondingPreset.units.symbol)")
@@ -25,13 +29,13 @@ struct TempSelectionSheet: View {
                     .font(.title3)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Material.thick)
+                    .background(.primary)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .bold()
                     Divider()
                 }
                 if tempDuration.count(where: {$0.duration != step.totalDuration}) > 0 {
-                    Text("Select a preset to change to below")
+                    Text("Available Presets")
                     ForEach(tempDuration.sorted(by: { $0.duration > $1.duration }).filter({$0.duration != step.totalDuration})) { temp in
                         HStack {
                             Text("\(temp.duration.formatToMinSec())")
@@ -83,16 +87,32 @@ struct TempSelectionSheet: View {
         .padding()
         
         .navigationTitle("Presets")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            Button(role: .close) {
+                dismiss()
+            }
+        }
     }
     private func selectPreset(preset: TemperatureDuration) {
         withAnimation {
             step.totalDuration = preset.duration
+            dismiss()
         }
     }
 }
 
 #Preview {
-    TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: [], totalDuration: 500,tempDuration: [.init(temperature: 20, units: .celsius, duration: 9*60), .init(temperature: nil, duration: 5*60)]))
+    @Previewable @State var isPresented: Bool = true
+    VStack {
+        
+    }
+    .sheet(isPresented: $isPresented) {
+        NavigationStack {
+            TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: [], totalDuration: 500,tempDuration: [.init(temperature: 20, units: .celsius, duration: 9*60), .init(temperature: nil, duration: 5*60)]))
+                .presentationDetents([.medium, .large])
+        }
+    }
 }
 
 #Preview {

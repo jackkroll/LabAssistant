@@ -118,9 +118,21 @@ struct DevelopView: View {
         .onChange(of: selectedTab) {
             loadPage()
         }
+        .onChange(of: currentStep.totalDuration) { oldValue, newValue in
+            guard let newTotal = newValue else { return }
+            // Continue elapsed progress if possible
+            if let oldTotal = oldValue, let remaining = timeRemaining {
+                let elapsed = oldTotal - remaining
+                timeRemaining = newTotal - elapsed
+            } else {
+                timeRemaining = newTotal
+            }
+        }
         .sheet(isPresented: $displayTempTimeOptions) {
-            TempSelectionSheet(step: currentStep)
-                .presentationDetents([.medium, .large])
+            NavigationStack {
+                TempSelectionSheet(step: currentStep)
+                    .presentationDetents([.medium, .large])
+            }
         }
         
     }
@@ -358,3 +370,4 @@ extension TimeInterval {
     )
     DevelopView(process: ilfordBW)
 }
+
