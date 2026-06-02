@@ -241,16 +241,68 @@ private struct TempDurationEditorView: View {
     @State private var selectedMinutes: Int = 9
     @State private var selectedSeconds: Int = 30
     @State private var temperatureDenoted: Bool = true
+    @State private var autoTime: Bool = false
+    @State private var autoTimeDetails: Bool = false
+    @State private var autoTimeAdditionalInfo: Bool = false
+    @State private var developerBehavior: DeveloperBehavior?
     
+    private enum DeveloperBehavior {
+        case slow, normal, fast
+        enum InvalidType {
+            case high, low
+        }
+        case invalid(speed: InvalidType)
+    }
     @State private var editsMade: Bool = false
     let formatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         return formatter
     }()
+    
+    private var isTemperatureInSupportedRange: Bool {
+        guard let temperature else { return false }
+        return SingleStep.isTemperatureInEstimateRange(Measurement(value: temperature, unit: units))
+    }
+    
+    init(step: SingleStep, inputTempDuration: TemperatureDuration? = nil) {
+        self.step = step
+        self.inputTempDuration = inputTempDuration
+        
+        let duration = inputTempDuration?.duration.rounded(.down)
+        if let inputTempDuration = inputTempDuration {
+            _temperature = State(initialValue: inputTempDuration.temperature)
+        } else {
+            _temperature = State(initialValue: 20)
+        }
+        _units = State(initialValue: inputTempDuration?.units ?? .celsius)
+        _selectedMinutes = State(initialValue: duration.map { Int($0 / 60) } ?? 9)
+        _selectedSeconds = State(initialValue: duration.map { Int($0.truncatingRemainder(dividingBy: 60)) } ?? 30)
+        _temperatureDenoted = State(initialValue: inputTempDuration.map { $0.temperature != nil } ?? true)
+    }
+    
     var body: some View {
         VStack {
             Form {
+                    switch developerBehavior {
+                    case .slow:
+                        EmptyView()
+                    case .normal:
+                        EmptyView()
+                    case .fast:
+                        EmptyView()
+                    case .invalid(let speed):
+                        DisclosureGroup {
+                            Text("Ensure your other presets contain the correct time & temperature settings. Auto time utilizes them to calculate the correct temperature, and detected that it is unusually \(speed)")
+                        } label: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .symbolRenderingMode(.multicolor)
+                            Text("Calculated temperature response is unusually \(speed)")
+                        }
+                    case nil:
+                        EmptyView()
+                    }
+                    
                 Section("Temperature") {
                     
                     HStack {
@@ -266,7 +318,7 @@ private struct TempDurationEditorView: View {
                         
                     }
                     .disabled(!temperatureDenoted)
-                    Toggle("Modify Step Temperature", isOn: $temperatureDenoted)
+                    Toggle("Preset includes temperature", isOn: $temperatureDenoted)
                         .onChange(of: temperatureDenoted) { _,newValue in
                             if !newValue {
                                 temperature = nil
@@ -282,8 +334,22 @@ private struct TempDurationEditorView: View {
                                 }
                             }
                         }
+                    
                 }
                 Section("Duration") {
+                    
+                    if autoTime && !isTemperatureInSupportedRange {
+                        DisclosureGroup {
+                            Text("Keep the temperature within 16ºC and 36ºC to use this feature")
+                        } label: {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundStyle(.secondary)
+                            Text("Auto Time Unavailable")
+                        }
+                    }
+                    
+                    
+                    
                     VStack {
                         HStack {
                             Picker("Minutes", selection: $selectedMinutes) {
@@ -300,26 +366,54 @@ private struct TempDurationEditorView: View {
                                 }
                             }
                         }
+                        .overlay {
+                            if autoTime {
+                                ZStack {
+                                    Image(systemName: "bolt.badge.clock.fill")
+                                        .scaleEffect(1.5)
+                                    Color.secondary.opacity(0.2)
+                                        .clipShape(ConcentricRectangle(corners: .concentric, isUniform: true))
+                                }
+                                .animation(.easeInOut, value: autoTime)
+                            }
+                        }
                         .pickerStyle(.wheel)
+                        .disabled(autoTime)
                     }
+                    .listRowSeparator(.hidden)
+                    Toggle("Auto time", isOn: $autoTime)
+                        .disabled(!canEstimateTime)
+                        .listRowSeparator(.hidden)
+                    AutoTimeDisclosure(
+                        step: step,
+                        temperature: temperature,
+                        units: units,
+                        autoTimeDetails: $autoTimeDetails
+                    )
+                    .listRowSeparator(.hidden)
+                    AutoTimeAdditionalInfoDisclosure(isExpanded: $autoTimeAdditionalInfo)
+                        .listRowSeparator(.hidden)
                 }
             }
+            .onChange(of: autoTime) { _, new in
+                if new, let temperature = temperature {
+                    applyAutoTime(at: Measurement(value: temperature, unit: units))
+                }
+            }
+            .onChange(of: temperature) { _, new in
+                if autoTime, let new = new {
+                    applyAutoTime(at: Measurement(value: new, unit: units))
+                }
+            }
+            .onChange(of: units) { old, new in
+                if let oldTemp = temperature {
+                    temperature = Measurement(value: oldTemp, unit: old).converted(to: new).value
+                }
+            }
+            
             .onChange(of: validateEditsMade()) { _, new in
                 editsMade = new
             }
-            .onAppear {
-                if let tempDuration = inputTempDuration {
-                    temperature = tempDuration.temperature
-                    units = tempDuration.units
-                    let minutes = Int(tempDuration.duration.rounded(.down) / 60)
-                    let seconds = Int(tempDuration.duration.rounded(.down).truncatingRemainder(dividingBy: 60))
-                    selectedMinutes = minutes
-                    selectedSeconds = seconds
-                    temperatureDenoted = tempDuration.temperature != nil
-                }
-                
-            }
-            
         }
         .toolbar {
             let shouldAdd = inputTempDuration == nil
@@ -355,11 +449,133 @@ private struct TempDurationEditorView: View {
         }
         .navigationBarBackButtonHidden()
     }
+    
+    var currentTemperatureMeasurement: Measurement<UnitTemperature>? {
+        guard let temperature else { return nil }
+        return Measurement(value: temperature, unit: units)
+    }
+    
+    var canEstimateTime: Bool {
+        guard let currentTemperatureMeasurement else { return false }
+        return step.canEstimateTime(at: currentTemperatureMeasurement)
+    }
+    
+    func applyAutoTime(at newTime: Measurement<UnitTemperature>) {
+        let calculatedTime = step.timeEstimate(at: newTime)
+        if let estK = calculatedTime?.estimatedK {
+            developerBehavior = approximateDeveloperBehavior(atK: estK)
+        }
+        if let estTime  = calculatedTime?.duration {
+            withAnimation {
+                selectedMinutes = Int(estTime.rounded() / 60)
+                selectedSeconds = Int(estTime.rounded().truncatingRemainder(dividingBy: 60))
+            }
+        } else {
+            //withAnimation {
+            //    autoTime = false
+            //}
+        }
+    }
+    private func approximateDeveloperBehavior(atK kVal: Double) -> DeveloperBehavior? {
+        if (0.055...0.105).contains(kVal) {
+            if (0.055...0.070).contains(kVal) {
+                return .slow
+            }
+            else if (0.070...0.085).contains(kVal){
+                return .normal
+            }
+            else if (0.085...0.105).contains(kVal){
+                return .fast
+            }
+        }
+        else {
+            if kVal > 0.105 {
+                return .invalid(speed: .high)
+            }
+            else {
+                return .invalid(speed: .low)
+            }
+        }
+        return nil
+    }
     func validateEditsMade() -> Bool {
         guard let inputTempDuration else { return true }
         return inputTempDuration.temperature != temperature
         || inputTempDuration.units != units
         || Int(inputTempDuration.duration.rounded(.down)) != ((selectedMinutes * 60) + selectedSeconds)
+    }
+    private struct RadioStatus: View {
+
+        let value: Bool
+
+        var body: some View {
+
+            Image(systemName: value ? "checkmark.circle.fill" : "circle")
+                .foregroundStyle(value ? .green : .secondary)
+
+        }
+    }
+    
+    private struct AutoTimeDisclosure: View {
+        let step: SingleStep
+        let temperature: Double?
+        let units: UnitTemperature
+        @Binding var autoTimeDetails: Bool
+
+        private var hasEnoughPresets: Bool {
+            step.temperatureEstimatePresetCount >= 2
+        }
+
+        private var isTemperatureInSupportedRange: Bool {
+            guard let temperature else { return false }
+            return SingleStep.isTemperatureInEstimateRange(Measurement(value: temperature, unit: units))
+        }
+
+        private var hasPresetTemperatureRange: Bool {
+            step.hasTemperatureEstimatePresetRange
+        }
+
+        var body: some View {
+            DisclosureGroup(isExpanded: $autoTimeDetails) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("At least 2 existing presets")
+                        Spacer()
+                        RadioStatus(value: hasEnoughPresets)
+                    }
+                    HStack {
+                        Text("Temperature within 16ºC and 36ºC")
+                        Spacer()
+                        RadioStatus(value: isTemperatureInSupportedRange)
+                    }
+                    HStack {
+                        Text("Existing presets have a range of 2ºC")
+                        Spacer()
+                        RadioStatus(value: hasPresetTemperatureRange)
+                    }
+                }
+            } label: {
+                Text("Requirements")
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 5)
+            }
+            .font(.callout)
+        }
+    }
+
+    private struct AutoTimeAdditionalInfoDisclosure: View {
+        @Binding var isExpanded: Bool
+
+        var body: some View {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                Text("Conversions are approximate and based on your existing presets. For important work always reference official data sheets")
+            } label: {
+                Text("Additional Information")
+                    .foregroundStyle(.secondary)
+                    .padding(.vertical, 5)
+            }
+            .font(.callout)
+        }
     }
 }
 
@@ -448,4 +664,3 @@ private struct SubstepEditor: View {
     )
     TempDurationEditorView(step: step)
 }
-

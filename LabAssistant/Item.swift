@@ -256,6 +256,78 @@ final class SingleStep: Identifiable, Codable {
     convenience init(title: String, index: Int) {
         self.init(title: title, index: index, notes: "", autoAdvance: true, associatedChemicals: [], totalDuration: nil, substep: nil)
     }
+    
+    private var temperatureEstimatePoints: [(temperature: Double, duration: TimeInterval)] {
+        (tempDuration ?? [])
+            .compactMap { tempDuration -> (Double, TimeInterval)? in
+                guard
+                    let temperature = tempDuration.measurement?.converted(to: .celsius).value,
+                    tempDuration.duration > 0
+                else { return nil }
+
+                return (temperature, tempDuration.duration)
+            }
+    }
+
+    var temperatureEstimatePresetCount: Int {
+        temperatureEstimatePoints.count
+    }
+
+    var hasTemperatureEstimatePresetRange: Bool {
+        let values = temperatureEstimatePoints.map(\.temperature)
+        guard
+            values.count >= 2,
+            let minVal = values.min(),
+            let maxVal = values.max()
+        else { return false }
+
+        return maxVal - minVal >= 2
+    }
+
+    static func isTemperatureInEstimateRange(_ temperature: Measurement<UnitTemperature>) -> Bool {
+        let celsius = temperature.converted(to: .celsius).value
+        return celsius >= 16 && celsius <= 36
+    }
+
+    func canEstimateTime(at temperature: Measurement<UnitTemperature>) -> Bool {
+        temperatureEstimatePresetCount >= 2
+        && hasTemperatureEstimatePresetRange
+        && Self.isTemperatureInEstimateRange(temperature)
+    }
+    
+    func timeEstimate(at inTemp: Measurement<UnitTemperature>) -> (duration: TimeInterval, estimatedK: Double)? {
+        guard canEstimateTime(at: inTemp) else { return nil }
+
+        let points: [(Double, Double)] = temperatureEstimatePoints
+            .map { ($0.temperature, $0.duration) }
+            .sorted { $0.0 < $1.0 }
+
+        guard points.count >= 2 else { return nil }
+
+        let target = inTemp.converted(to: .celsius).value
+
+        let candidatePairs = zip(points, points.dropFirst())
+            .filter { a, b in
+                let dx = b.0 - a.0
+                return dx >= 2 &&
+                       target >= a.0 &&
+                       target <= b.0
+            }
+
+        let pair = candidatePairs.min {
+            abs((($0.0.0 + $0.1.0) / 2) - target)
+            <
+            abs((($1.0.0 + $1.1.0) / 2) - target)
+        }
+
+        let selected = pair ?? (points.first!, points.last!)
+
+        let (a, b) = selected
+
+        let k = log(b.1 / a.1) / (a.0 - b.0)
+
+        return (a.1 * exp(k * (a.0 - target)), k)
+    }
 }
 
 @Model
