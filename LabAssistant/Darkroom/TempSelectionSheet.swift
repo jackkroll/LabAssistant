@@ -17,13 +17,22 @@ struct TempSelectionSheet: View {
                 if let totalDuration = step.totalDuration {
                     HStack{
                         Text("Current")
-                            .bold()
+                        .bold()
                         Spacer()
                     }
                     HStack {
-                        Text("\(totalDuration.formatToMinSec())")
-                        if let correspondingPreset = step.tempDuration?.first(where: {$0.duration == totalDuration}), let temperature = correspondingPreset.temperature {
+                        if let correspondingPreset = step.sortedTemperatureDurations.first(where: {$0.duration == totalDuration}), correspondingPreset.isAutoTime {
+                            Label("Auto Time", systemImage: "bolt.badge.clock.fill")
+                                .fontWeight(.semibold)
+                        } else {
+                            Text("\(totalDuration.formatToMinSec())")
+                        }
+                        if let correspondingPreset = step.sortedTemperatureDurations.first(where: {$0.duration == totalDuration}), let temperature = correspondingPreset.temperature {
                             Text("@ \(temperature.formatted(.number))\(correspondingPreset.units.symbol)")
+                        }
+                        Spacer(minLength: 0)
+                        if let correspondingPreset = step.sortedTemperatureDurations.first(where: {$0.duration == totalDuration}), correspondingPreset.isAutoTime {
+                            Text(totalDuration.formatToMinSec())
                         }
                     }
                     .font(.title3)
@@ -34,13 +43,23 @@ struct TempSelectionSheet: View {
                     .bold()
                     Divider()
                 }
-                if tempDuration.count(where: {$0.duration != step.totalDuration}) > 0 {
+                let availablePresets = step.sortedTemperatureDurations.filter({ $0.duration != step.totalDuration })
+                if availablePresets.count > 0 {
                     Text("Available Presets")
-                    ForEach(tempDuration.sorted(by: { $0.duration > $1.duration }).filter({$0.duration != step.totalDuration})) { temp in
+                    ForEach(availablePresets) { temp in
                         HStack {
-                            Text("\(temp.duration.formatToMinSec())")
+                            if temp.isAutoTime {
+                                Label("Auto Time", systemImage: "bolt.badge.clock.fill")
+                                    .fontWeight(.semibold)
+                            } else {
+                                Text("\(temp.duration.formatToMinSec())")
+                            }
                             if let temperature = temp.temperature {
                                 Text("@ \(temperature.formatted(.number))\(temp.units.symbol)")
+                            }
+                            Spacer(minLength: 0)
+                            if temp.isAutoTime {
+                                Text(temp.duration.formatToMinSec())
                             }
                         }
                         .font(.title3)
@@ -63,7 +82,12 @@ struct TempSelectionSheet: View {
                         ) {
                             Button("Create a new preset", role: .confirm) {
                                 step.tempDuration?.append(.init(temperature: nil, duration: step.totalDuration ?? 60))
-                                selectPreset(preset: temp)
+                                _ = step.recalculateAutoTimePreset()
+                                if temp.isAutoTime, let autoTime = step.autoTimePreset {
+                                    selectPreset(preset: autoTime)
+                                } else {
+                                    selectPreset(preset: temp)
+                                }
                             }
                             .keyboardShortcut(.defaultAction)
                             Button(role: .destructive) {

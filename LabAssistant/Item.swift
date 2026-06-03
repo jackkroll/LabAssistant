@@ -166,31 +166,35 @@ final class DevProcess : Equatable {
         
         var builtSteps: [SingleStep] = []
         let stepData: Data? = record["stepsData"] as? Data
-        if stepData != nil {
+        if let stepData {
             do {
-                struct StepDTO: Codable { let title: String; let index: Int; let notes: String?; let autoAdvance: Bool?; let totalDuration: Double?; let substepTitle: String?; let substepDuration: Double?; let substepGap: Double? }
-                let decoded = try JSONDecoder().decode([StepDTO].self, from: stepData!)
-                builtSteps = decoded.map { dto in
-                    let sub: SubstepProcess? = {
-                        if let st = dto.substepTitle, let d = dto.substepDuration, let g = dto.substepGap {
-                            return SubstepProcess(title: st, duration: d, gap: g)
-                        }
-                        return nil
-                    }()
-                    return SingleStep(
-                        title: dto.title,
-                        index: dto.index,
-                        notes: dto.notes ?? "",
-                        autoAdvance: dto.autoAdvance ?? true,
-                        associatedChemicals: [],
-                        totalDuration: dto.totalDuration,
-                        substep: sub
-                    )
-                }
+                builtSteps = try JSONDecoder().decode([SingleStep].self, from: stepData)
             } catch {
-                // If steps JSON is malformed, fall back to empty steps
-                print("malformed")
-                builtSteps = []
+                do {
+                    struct StepDTO: Codable { let title: String; let index: Int; let notes: String?; let autoAdvance: Bool?; let totalDuration: Double?; let substepTitle: String?; let substepDuration: Double?; let substepGap: Double? }
+                    let decoded = try JSONDecoder().decode([StepDTO].self, from: stepData)
+                    builtSteps = decoded.map { dto in
+                        let sub: SubstepProcess? = {
+                            if let st = dto.substepTitle, let d = dto.substepDuration, let g = dto.substepGap {
+                                return SubstepProcess(title: st, duration: d, gap: g)
+                            }
+                            return nil
+                        }()
+                        return SingleStep(
+                            title: dto.title,
+                            index: dto.index,
+                            notes: dto.notes ?? "",
+                            autoAdvance: dto.autoAdvance ?? true,
+                            associatedChemicals: [],
+                            totalDuration: dto.totalDuration,
+                            substep: sub
+                        )
+                    }
+                } catch {
+                    // If steps JSON is malformed, fall back to empty steps
+                    print("malformed")
+                    builtSteps = []
+                }
             }
         }
 
@@ -256,10 +260,52 @@ final class SingleStep: Identifiable, Codable {
     convenience init(title: String, index: Int) {
         self.init(title: title, index: index, notes: "", autoAdvance: true, associatedChemicals: [], totalDuration: nil, substep: nil)
     }
+
+    var autoTimePreset: TemperatureDuration? {
+        tempDuration?.first(where: { $0.isAutoTime })
+    }
+
+    var autoTimeAvailability: Bool {
+        guard let autoTimePreset, let temperature = autoTimePreset.measurement else { return false }
+        return canEstimateTime(at: temperature, excluding: autoTimePreset)
+    }
+
+    var autoTimeAvailabilityLabel: String {
+        autoTimeAvailability ? "Auto Time Available" : "Auto Time Not Available"
+    }
+
+    var sortedTemperatureDurations: [TemperatureDuration] {
+        (tempDuration ?? []).sorted { lhs, rhs in
+            if lhs.isAutoTime != rhs.isAutoTime {
+                return lhs.isAutoTime && !rhs.isAutoTime
+            }
+            return lhs.duration > rhs.duration
+        }
+    }
+
+    func setAutoTimePreset(_ preset: TemperatureDuration?) {
+        guard let tempDuration else { return }
+        for duration in tempDuration {
+            duration.isAutoTime = duration.id == preset?.id
+        }
+    }
+
+    @discardableResult
+    func recalculateAutoTimePreset(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
+        let target = excludedPreset?.isAutoTime == true ? excludedPreset : autoTimePreset
+        guard let target, let temperature = target.measurement else { return nil }
+        guard let estimate = timeEstimate(at: temperature, excluding: target)?.duration else { return nil }
+        target.duration = estimate
+        return estimate
+    }
     
-    private var temperatureEstimatePoints: [(temperature: Double, duration: TimeInterval)] {
+    private func temperatureEstimatePoints(excluding excludedPreset: TemperatureDuration? = nil) -> [(temperature: Double, duration: TimeInterval)] {
         (tempDuration ?? [])
             .compactMap { tempDuration -> (Double, TimeInterval)? in
+                if let excludedPreset, tempDuration === excludedPreset {
+                    return nil
+                }
+
                 guard
                     let temperature = tempDuration.measurement?.converted(to: .celsius).value,
                     tempDuration.duration > 0
@@ -270,11 +316,19 @@ final class SingleStep: Identifiable, Codable {
     }
 
     var temperatureEstimatePresetCount: Int {
-        temperatureEstimatePoints.count
+        temperatureEstimatePoints().count
+    }
+
+    func temperatureEstimatePresetCountExcluding(_ preset: TemperatureDuration?) -> Int {
+        temperatureEstimatePoints(excluding: preset).count
     }
 
     var hasTemperatureEstimatePresetRange: Bool {
-        let values = temperatureEstimatePoints.map(\.temperature)
+        hasTemperatureEstimatePresetRangeExcluding(nil)
+    }
+
+    func hasTemperatureEstimatePresetRangeExcluding(_ preset: TemperatureDuration?) -> Bool {
+        let values = temperatureEstimatePoints(excluding: preset).map(\.temperature)
         guard
             values.count >= 2,
             let minVal = values.min(),
@@ -289,16 +343,16 @@ final class SingleStep: Identifiable, Codable {
         return celsius >= 16 && celsius <= 36
     }
 
-    func canEstimateTime(at temperature: Measurement<UnitTemperature>) -> Bool {
-        temperatureEstimatePresetCount >= 2
-        && hasTemperatureEstimatePresetRange
+    func canEstimateTime(at temperature: Measurement<UnitTemperature>, excluding excludedPreset: TemperatureDuration? = nil) -> Bool {
+        temperatureEstimatePresetCountExcluding(excludedPreset) >= 2
+        && hasTemperatureEstimatePresetRangeExcluding(excludedPreset)
         && Self.isTemperatureInEstimateRange(temperature)
     }
     
-    func timeEstimate(at inTemp: Measurement<UnitTemperature>) -> (duration: TimeInterval, estimatedK: Double)? {
-        guard canEstimateTime(at: inTemp) else { return nil }
+    func timeEstimate(at inTemp: Measurement<UnitTemperature>, excluding excludedPreset: TemperatureDuration? = nil) -> (duration: TimeInterval, estimatedK: Double)? {
+        guard canEstimateTime(at: inTemp, excluding: excludedPreset) else { return nil }
 
-        let points: [(Double, Double)] = temperatureEstimatePoints
+        let points: [(Double, Double)] = temperatureEstimatePoints(excluding: excludedPreset)
             .map { ($0.temperature, $0.duration) }
             .sorted { $0.0 < $1.0 }
 
@@ -325,8 +379,88 @@ final class SingleStep: Identifiable, Codable {
         let (a, b) = selected
 
         let k = log(b.1 / a.1) / (a.0 - b.0)
+        let descriptiveK = Self.descriptiveK(from: points) ?? k
 
-        return (a.1 * exp(k * (a.0 - target)), k)
+        return (a.1 * exp(k * (a.0 - target)), descriptiveK)
+    }
+
+    private static func descriptiveK(from points: [(Double, Double)]) -> Double? {
+        guard points.count >= 2 else { return nil }
+
+        let xMean = points.reduce(0) { $0 + $1.0 } / Double(points.count)
+        let yMean = points.reduce(0) { $0 + log($1.1) } / Double(points.count)
+        let denominator = points.reduce(0) { $0 + pow($1.0 - xMean, 2) }
+
+        guard denominator > 0 else { return nil }
+
+        let slope = points.reduce(0) { partialResult, point in
+            partialResult + ((point.0 - xMean) * (log(point.1) - yMean))
+        } / denominator
+
+        return -slope
+    }
+    
+    enum DeveloperBehavior {
+        case low, normal, high
+        case invalid(isHigh: Bool)
+
+        var title: String {
+            switch self {
+            case .low:
+                return "Low"
+            case .normal:
+                return "Normal"
+            case .high:
+                return "High"
+            case .invalid(let isHigh):
+                return isHigh ? "Too High" : "Too Low"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .low:
+                return "arrow.down.circle.fill"
+            case .normal:
+                return "checkmark.circle.fill"
+            case .high:
+                return "arrow.up.circle.fill"
+            case .invalid:
+                return "exclamationmark.triangle.fill"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .low, .high:
+                return .yellow
+            case .normal:
+                return .green
+            case .invalid:
+                return .red
+            }
+        }
+    }
+    func developerBehavior() -> DeveloperBehavior {
+        let points = temperatureEstimatePoints()
+        guard let k = Self.descriptiveK(from: points), k.isFinite else {
+            return .invalid(isHigh: false)
+        }
+
+        if k < 0.05 {
+            return .invalid(isHigh: false)
+        }
+        if k <= 0.065 {
+            return .low
+        }
+        if k <= 0.095 {
+            return .normal
+        }
+        if k <= 0.11 {
+            return .high
+        }
+
+        return .invalid(isHigh: true)
     }
 }
 
@@ -336,6 +470,7 @@ final class TemperatureDuration: Codable {
     var temperature: Double? = 20
     private var unitsSymbolStorage: String? = UnitTemperature.celsius.symbol
     var duration: TimeInterval = 0
+    var isAutoTime: Bool = false
     var measurement: Measurement<UnitTemperature>? {
         if let temperature = temperature{
             Measurement(value: temperature, unit: units)
@@ -364,18 +499,20 @@ final class TemperatureDuration: Codable {
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case temperature, unitsSymbol, duration }
+    private enum CodingKeys: String, CodingKey { case temperature, unitsSymbol, duration, isAutoTime }
 
-    init(temperature: Double?, units: UnitTemperature? = .celsius, duration: TimeInterval) {
+    init(temperature: Double?, units: UnitTemperature? = .celsius, duration: TimeInterval, isAutoTime: Bool = false) {
         self.temperature = temperature
         self.unitsSymbolStorage = units?.symbol
         self.duration = duration
+        self.isAutoTime = isAutoTime
     }
 
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.temperature = try c.decode(Double.self, forKey: .temperature)
+        self.temperature = try c.decodeIfPresent(Double.self, forKey: .temperature)
         self.duration = try c.decode(TimeInterval.self, forKey: .duration)
+        self.isAutoTime = try c.decodeIfPresent(Bool.self, forKey: .isAutoTime) ?? false
         let symbol = try c.decodeIfPresent(String.self, forKey: .unitsSymbol) ?? UnitTemperature.celsius.symbol
         switch symbol {
         case UnitTemperature.celsius.symbol,
@@ -392,6 +529,7 @@ final class TemperatureDuration: Codable {
         try c.encode(temperature, forKey: .temperature)
         try c.encode(duration, forKey: .duration)
         try c.encode(unitsSymbolStorage, forKey: .unitsSymbol)
+        try c.encode(isAutoTime, forKey: .isAutoTime)
     }
 }
 

@@ -11,6 +11,8 @@ struct StepDetailView: View {
     @Query private var allChemicals: [Chemical]
     @State private var selectedChemicalID: PersistentIdentifier?
     @State private var isEditingSubstep: Bool = false
+    @State private var editingTemperatureDuration: TemperatureDuration? = nil
+    @State private var showAutoTimeRequirements: Bool = false
     
     @State private var displayRemovalAlert: Bool = false
     
@@ -32,6 +34,18 @@ struct StepDetailView: View {
                             .contentTransition(.numericText())
                             .animation(.easeInOut, value: durationMinutes)
                         Spacer()
+                        if ((step.tempDuration?.count(where: {$0.temperature != nil}) ?? 0) > 0) {
+                            if step.totalDuration ?? .infinity <= 5 * 60 {
+                                Text("Low Time Warning")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(Color.orange.opacity(0.18))
+                                    .foregroundStyle(.orange)
+                                    .clipShape(Capsule())
+                            }
+                                
+                        }
                         Text("min")
                             .foregroundStyle(.secondary)
                     }
@@ -52,8 +66,140 @@ struct StepDetailView: View {
                 
                 Toggle("Auto-advance", isOn: $step.autoAdvance)
             }
+            Section("Auto Time") {
+                if let temp = step.autoTimePreset {
+                    let developerBehavior = step.developerBehavior()
+                    let excludedAutoTime = step.autoTimePreset
+                    let hasEnoughPresets = step.temperatureEstimatePresetCountExcluding(excludedAutoTime) >= 2
+                    let hasPresetRange = step.hasTemperatureEstimatePresetRangeExcluding(excludedAutoTime)
+                    let temperatureInRange = temp.measurement.map { SingleStep.isTemperatureInEstimateRange($0) } ?? false
+                    let isSelected: Bool = step.totalDuration.map { $0 == temp.duration } ?? false
+
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack {
+                            Label("Auto Time", systemImage: "bolt.badge.clock.fill")
+                                .fontWeight(.semibold)
+                            Spacer(minLength: 0)
+                            if let temperature = temp.temperature {
+                                Text("@")
+                                Text("\(temperature.formatted())\(temp.units.symbol)")
+                            } else {
+                                Text("No temperature assigned")
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                        .font(.title3)
+                        
+                        HStack {
+                            Button(isSelected ? "Selected" : "Select") {
+                                if !(step.tempDuration?.contains(where: { $0.duration == step.totalDuration }) ?? false) && step.totalDuration != nil {
+                                    displayRemovalAlert = true
+                                } else {
+                                    selectPreset(preset: temp)
+                                }
+                            }
+                            .disabled(!step.autoTimeAvailability)
+                            .alert(
+                                "Warning",
+                                isPresented: $displayRemovalAlert
+                            ) {
+                                Button("Create a new preset", role: .confirm) {
+                                    step.tempDuration?.append(.init(temperature: nil, duration: step.totalDuration ?? 60))
+                                    selectPreset(preset: temp)
+                                }
+                                .keyboardShortcut(.defaultAction)
+                                Button(role: .destructive) {
+                                    selectPreset(preset: temp)
+                                } label: {
+                                    Text("Replace")
+                                }
+                            } message: {
+                                Text("There is not a preset with the current timing")
+                            }
+                            .disabled(isSelected)
+                            .buttonStyle(.borderedProminent)
+                            .buttonSizing(.flexible)
+
+                            Button {
+                                editingTemperatureDuration = temp
+                            } label: {
+                                Text("Edit")
+                                    .frame(maxWidth: .infinity)
+                                    .padding(7)
+                                    .background(.orange)
+                                    .clipShape(.capsule)
+                            }
+                            .buttonStyle(.plain)
+                            .buttonSizing(.flexible)
+                        }
+                        
+                        DisclosureGroup {
+                            Text("This value is calculated based on your current presets and then compared to expected temperature response values.")
+                        } label: {
+                            HStack {
+                                Text("Temperature Response")
+                                    .foregroundStyle(.secondary)
+                                Spacer()
+                                Label(developerBehavior.title, systemImage: developerBehavior.systemImage)
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(developerBehavior.tint.opacity(0.18))
+                                    .foregroundStyle(developerBehavior.tint)
+                                    .clipShape(Capsule())
+                            }
+                            .font(.callout)
+                        }
+                        DisclosureGroup(isExpanded: $showAutoTimeRequirements) {
+                            VStack(alignment: .leading, spacing: 10) {
+                                HStack {
+                                    Text("At least 2 presets with temperature/time pairs")
+                                    Spacer()
+                                    Image(systemName: hasEnoughPresets ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(hasEnoughPresets ? .green : .secondary)
+                                }
+                                HStack {
+                                    Text("Preset temperatures span at least 2ºC")
+                                    Spacer()
+                                    Image(systemName: hasPresetRange ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(hasPresetRange ? .green : .secondary)
+                                }
+                                HStack {
+                                    Text("Temperature stays between 16ºC and 36ºC")
+                                    Spacer()
+                                    Image(systemName: temperatureInRange ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(temperatureInRange ? .green : .secondary)
+                                }
+                            }
+                            .font(.callout)
+                        } label: {
+                            HStack {
+                                Text("Requirements")
+                                    .foregroundStyle(.secondary)
+                                    .padding(.vertical, 5)
+                                Spacer()
+                                Image(systemName: step.autoTimeAvailability ? "checkmark.circle.fill" : "xmark.circle.fill")
+                                    .foregroundStyle(step.autoTimeAvailability ? .green : .secondary)
+                            }
+                        }
+                        DisclosureGroup {
+                            Text("Auto Time is calculated based on your presets, before important work always double check with the manufacturer.")
+                        } label: {
+                            Text("Additional Notes")
+                                .foregroundStyle(.secondary)
+                                .padding(.vertical, 5)
+                        }
+                    }
+                } else {
+                    ContentUnavailableView(
+                        "Auto Time Not Available",
+                        systemImage: "bolt.badge.clock.fill",
+                        description: Text("Add an Auto Time preset to edit its temperature and see its accuracy requirements.")
+                    )
+                }
+            }
             Section {
-                ForEach((step.tempDuration ?? []).sorted(by: { $0.duration > $1.duration })) { temp in
+                ForEach(step.sortedTemperatureDurations.filter { !$0.isAutoTime }) { temp in
                     let isSelected: Bool = step.totalDuration.map { $0 == temp.duration } ?? false
                     VStack{
                         HStack {
@@ -62,6 +208,7 @@ struct StepDetailView: View {
                                 Text("@")
                                 Text("\(temperature.formatted())\(temp.units.symbol)")
                             }
+                            Spacer(minLength: 0)
                         }
                         .font(.title3)
                         .padding(.horizontal)
@@ -107,12 +254,13 @@ struct StepDetailView: View {
                                     .padding(7)
                                     .background(.orange)
                                     .clipShape(.capsule)
-                                
+                                    
                             }
                             .navigationLinkIndicatorVisibility(.hidden)
                             
                             Button("Remove", role: .destructive) {
                                 step.tempDuration?.removeAll(where: { $0.duration == temp.duration && $0.temperature == temp.temperature && $0.units == temp.units })
+                                _ = step.recalculateAutoTimePreset()
                             }
                             .buttonStyle(.borderedProminent)
                             .buttonSizing(.flexible)
@@ -121,7 +269,6 @@ struct StepDetailView: View {
                         
                         
                     }
-                    
                 }
                 NavigationLink {
                     TempDurationEditorView(step: step)
@@ -131,10 +278,9 @@ struct StepDetailView: View {
                         .foregroundStyle(.blue)
                 }
                 .navigationLinkIndicatorVisibility(.hidden)
-                
             } header: {
                 Text("Temperature Time Presets")
-            } footer : {
+            } footer: {
                 Text("Add presets to easily select the correct temperature when you're ready to develop")
             }
             
@@ -207,6 +353,9 @@ struct StepDetailView: View {
         }
         .navigationTitle("Edit Step")
         .navigationBarTitleDisplayMode(.inline)
+        .onAppear {
+            _ = step.recalculateAutoTimePreset()
+        }
         .sheet(isPresented: $isEditingSubstep) {
             NavigationStack {
                 if let _ = step.substep {
@@ -221,6 +370,14 @@ struct StepDetailView: View {
                 } else {
                     Text("No substep to edit")
                 }
+            }
+        }
+        .sheet(item: $editingTemperatureDuration) { temp in
+            NavigationStack {
+                TempDurationEditorView(step: step, inputTempDuration: temp)
+                    .navigationTitle("Edit Auto Time")
+                    .navigationBarTitleDisplayMode(.inline)
+                    .presentationDetents([.medium, .large])
             }
         }
     }
@@ -241,28 +398,15 @@ private struct TempDurationEditorView: View {
     @State private var selectedMinutes: Int = 9
     @State private var selectedSeconds: Int = 30
     @State private var temperatureDenoted: Bool = true
-    @State private var autoTime: Bool = false
-    @State private var autoTimeDetails: Bool = false
-    @State private var autoTimeAdditionalInfo: Bool = false
-    @State private var developerBehavior: DeveloperBehavior?
-    
-    private enum DeveloperBehavior {
-        case slow, normal, fast
-        enum InvalidType {
-            case high, low
-        }
-        case invalid(speed: InvalidType)
-    }
     @State private var editsMade: Bool = false
     let formatter: NumberFormatter = {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
         return formatter
     }()
-    
-    private var isTemperatureInSupportedRange: Bool {
-        guard let temperature else { return false }
-        return SingleStep.isTemperatureInEstimateRange(Measurement(value: temperature, unit: units))
+
+    private var isEditingAutoTimePreset: Bool {
+        inputTempDuration?.isAutoTime == true
     }
     
     init(step: SingleStep, inputTempDuration: TemperatureDuration? = nil) {
@@ -278,33 +422,13 @@ private struct TempDurationEditorView: View {
         _units = State(initialValue: inputTempDuration?.units ?? .celsius)
         _selectedMinutes = State(initialValue: duration.map { Int($0 / 60) } ?? 9)
         _selectedSeconds = State(initialValue: duration.map { Int($0.truncatingRemainder(dividingBy: 60)) } ?? 30)
-        _temperatureDenoted = State(initialValue: inputTempDuration.map { $0.temperature != nil } ?? true)
+        _temperatureDenoted = State(initialValue: inputTempDuration?.isAutoTime == true ? true : (inputTempDuration.map { $0.temperature != nil } ?? true))
     }
     
     var body: some View {
         VStack {
             Form {
-                    switch developerBehavior {
-                    case .slow:
-                        EmptyView()
-                    case .normal:
-                        EmptyView()
-                    case .fast:
-                        EmptyView()
-                    case .invalid(let speed):
-                        DisclosureGroup {
-                            Text("Ensure your other presets contain the correct time & temperature settings. Auto time utilizes them to calculate the correct temperature, and detected that it is unusually \(speed)")
-                        } label: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .symbolRenderingMode(.multicolor)
-                            Text("Calculated temperature response is unusually \(speed)")
-                        }
-                    case nil:
-                        EmptyView()
-                    }
-                    
                 Section("Temperature") {
-                    
                     HStack {
                         TextField("Temperature Preset", value: $temperature, formatter: formatter)
                             .keyboardType(.decimalPad)
@@ -315,102 +439,79 @@ private struct TempDurationEditorView: View {
                             }
                         }
                         .pickerStyle(.palette)
-                        
                     }
-                    .disabled(!temperatureDenoted)
-                    Toggle("Preset includes temperature", isOn: $temperatureDenoted)
-                        .onChange(of: temperatureDenoted) { _,newValue in
-                            if !newValue {
-                                temperature = nil
-                            }
-                            else {
-                                switch units {
-                                case .celsius:
-                                    temperature = 20
-                                case .fahrenheit:
-                                    temperature = 68
-                                default:
-                                    temperature = 20
-                                }
-                            }
-                        }
-                    
-                }
-                Section("Duration") {
-                    
-                    if autoTime && !isTemperatureInSupportedRange {
-                        DisclosureGroup {
-                            Text("Keep the temperature within 16ºC and 36ºC to use this feature")
-                        } label: {
-                            Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundStyle(.secondary)
-                            Text("Auto Time Unavailable")
-                        }
-                    }
-                    
-                    
-                    
-                    VStack {
-                        HStack {
-                            Picker("Minutes", selection: $selectedMinutes) {
-                                ForEach(0..<60) { i in Text("\(i) min").tag(i) }
-                            }
-                            Text(":")
-                            Picker("Seconds", selection: $selectedSeconds) {
-                                ForEach(0..<60) { i in
-                                    HStack {
-                                        Text(i, format: .number.precision(.integerLength(2...)))
-                                        Text("sec")
+                    .disabled(isEditingAutoTimePreset ? false : !temperatureDenoted)
+
+                    if !isEditingAutoTimePreset {
+                        Toggle("Preset includes temperature", isOn: $temperatureDenoted)
+                            .onChange(of: temperatureDenoted) { _, newValue in
+                                if !newValue {
+                                    temperature = nil
+                                } else {
+                                    switch units {
+                                    case .celsius:
+                                        temperature = 20
+                                    case .fahrenheit:
+                                        temperature = 68
+                                    default:
+                                        temperature = 20
                                     }
-                                    .tag(i)
                                 }
-                            }
                         }
-                        .overlay {
-                            if autoTime {
-                                ZStack {
-                                    Image(systemName: "bolt.badge.clock.fill")
-                                        .scaleEffect(1.5)
-                                    Color.secondary.opacity(0.2)
-                                        .clipShape(ConcentricRectangle(corners: .concentric, isUniform: true))
-                                }
-                                .animation(.easeInOut, value: autoTime)
-                            }
-                        }
-                        .pickerStyle(.wheel)
-                        .disabled(autoTime)
                     }
-                    .listRowSeparator(.hidden)
-                    Toggle("Auto time", isOn: $autoTime)
-                        .disabled(!canEstimateTime)
-                        .listRowSeparator(.hidden)
-                    AutoTimeDisclosure(
-                        step: step,
-                        temperature: temperature,
-                        units: units,
-                        autoTimeDetails: $autoTimeDetails
-                    )
-                    .listRowSeparator(.hidden)
-                    AutoTimeAdditionalInfoDisclosure(isExpanded: $autoTimeAdditionalInfo)
-                        .listRowSeparator(.hidden)
+                }
+
+                if !isEditingAutoTimePreset {
+                    Section("Duration") {
+                        VStack {
+                            HStack {
+                                Picker("Minutes", selection: $selectedMinutes) {
+                                    ForEach(0..<60) { i in Text("\(i) min").tag(i) }
+                                }
+                                Text(":")
+                                Picker("Seconds", selection: $selectedSeconds) {
+                                    ForEach(0..<60) { i in
+                                        HStack {
+                                            Text(i, format: .number.precision(.integerLength(2...)))
+                                            Text("sec")
+                                        }
+                                        .tag(i)
+                                    }
+                                }
+                            }
+                            .pickerStyle(.wheel)
+                        }
+                    }
                 }
             }
-            .onChange(of: autoTime) { _, new in
-                if new, let temperature = temperature {
-                    applyAutoTime(at: Measurement(value: temperature, unit: units))
+            .onAppear {
+                if !isEditingAutoTimePreset {
+                    refreshLinkedAutoTimePreset()
                 }
             }
             .onChange(of: temperature) { _, new in
-                if autoTime, let new = new {
-                    applyAutoTime(at: Measurement(value: new, unit: units))
+                if !isEditingAutoTimePreset {
+                    refreshLinkedAutoTimePreset()
                 }
             }
             .onChange(of: units) { old, new in
                 if let oldTemp = temperature {
                     temperature = Measurement(value: oldTemp, unit: old).converted(to: new).value
                 }
+                if !isEditingAutoTimePreset {
+                    refreshLinkedAutoTimePreset()
+                }
             }
-            
+            .onChange(of: selectedMinutes) { _, _ in
+                if !isEditingAutoTimePreset {
+                    refreshLinkedAutoTimePreset()
+                }
+            }
+            .onChange(of: selectedSeconds) { _, _ in
+                if !isEditingAutoTimePreset {
+                    refreshLinkedAutoTimePreset()
+                }
+            }
             .onChange(of: validateEditsMade()) { _, new in
                 editsMade = new
             }
@@ -428,154 +529,47 @@ private struct TempDurationEditorView: View {
                         if step.tempDuration == nil {
                             step.tempDuration = []
                         }
-                        step.tempDuration?.append(
-                            .init(
-                                temperature: temperature,
-                                units: units,
-                                duration: TimeInterval(((selectedMinutes * 60) + selectedSeconds)))
+                        let newTempDuration = TemperatureDuration(
+                            temperature: temperature,
+                            units: units,
+                            duration: TimeInterval((selectedMinutes * 60) + selectedSeconds)
                         )
-                    }
-                    else if let tempDuration = inputTempDuration{
+                        step.tempDuration?.append(newTempDuration)
+                    } else if let tempDuration = inputTempDuration {
                         tempDuration.temperature = temperature
                         tempDuration.units = units
-                        tempDuration.duration = TimeInterval(((selectedMinutes * 60) + selectedSeconds))
+                        if isEditingAutoTimePreset {
+                            if let estimated = step.timeEstimate(at: Measurement(value: temperature ?? 20, unit: units), excluding: tempDuration)?.duration {
+                                tempDuration.duration = estimated
+                            }
+                        } else {
+                            tempDuration.duration = TimeInterval((selectedMinutes * 60) + selectedSeconds)
+                        }
                     }
+                    step.recalculateAutoTimePreset(excluding: inputTempDuration)
                     dismiss()
                 }
                 .disabled(!editsMade && inputTempDuration != nil)
-                
             }
-            
         }
         .navigationBarBackButtonHidden()
+        .navigationTitle(isEditingAutoTimePreset ? "Edit Auto Time" : (inputTempDuration == nil ? "Add Preset" : "Edit Preset"))
     }
-    
-    var currentTemperatureMeasurement: Measurement<UnitTemperature>? {
-        guard let temperature else { return nil }
-        return Measurement(value: temperature, unit: units)
+
+    private func refreshLinkedAutoTimePreset() {
+        guard !isEditingAutoTimePreset else { return }
+        _ = step.recalculateAutoTimePreset(excluding: inputTempDuration)
     }
-    
-    var canEstimateTime: Bool {
-        guard let currentTemperatureMeasurement else { return false }
-        return step.canEstimateTime(at: currentTemperatureMeasurement)
-    }
-    
-    func applyAutoTime(at newTime: Measurement<UnitTemperature>) {
-        let calculatedTime = step.timeEstimate(at: newTime)
-        if let estK = calculatedTime?.estimatedK {
-            developerBehavior = approximateDeveloperBehavior(atK: estK)
-        }
-        if let estTime  = calculatedTime?.duration {
-            withAnimation {
-                selectedMinutes = Int(estTime.rounded() / 60)
-                selectedSeconds = Int(estTime.rounded().truncatingRemainder(dividingBy: 60))
-            }
-        } else {
-            //withAnimation {
-            //    autoTime = false
-            //}
-        }
-    }
-    private func approximateDeveloperBehavior(atK kVal: Double) -> DeveloperBehavior? {
-        if (0.055...0.105).contains(kVal) {
-            if (0.055...0.070).contains(kVal) {
-                return .slow
-            }
-            else if (0.070...0.085).contains(kVal){
-                return .normal
-            }
-            else if (0.085...0.105).contains(kVal){
-                return .fast
-            }
-        }
-        else {
-            if kVal > 0.105 {
-                return .invalid(speed: .high)
-            }
-            else {
-                return .invalid(speed: .low)
-            }
-        }
-        return nil
-    }
+
     func validateEditsMade() -> Bool {
         guard let inputTempDuration else { return true }
+        if isEditingAutoTimePreset {
+            return inputTempDuration.temperature != temperature
+            || inputTempDuration.units != units
+        }
         return inputTempDuration.temperature != temperature
         || inputTempDuration.units != units
         || Int(inputTempDuration.duration.rounded(.down)) != ((selectedMinutes * 60) + selectedSeconds)
-    }
-    private struct RadioStatus: View {
-
-        let value: Bool
-
-        var body: some View {
-
-            Image(systemName: value ? "checkmark.circle.fill" : "circle")
-                .foregroundStyle(value ? .green : .secondary)
-
-        }
-    }
-    
-    private struct AutoTimeDisclosure: View {
-        let step: SingleStep
-        let temperature: Double?
-        let units: UnitTemperature
-        @Binding var autoTimeDetails: Bool
-
-        private var hasEnoughPresets: Bool {
-            step.temperatureEstimatePresetCount >= 2
-        }
-
-        private var isTemperatureInSupportedRange: Bool {
-            guard let temperature else { return false }
-            return SingleStep.isTemperatureInEstimateRange(Measurement(value: temperature, unit: units))
-        }
-
-        private var hasPresetTemperatureRange: Bool {
-            step.hasTemperatureEstimatePresetRange
-        }
-
-        var body: some View {
-            DisclosureGroup(isExpanded: $autoTimeDetails) {
-                VStack(alignment: .leading, spacing: 10) {
-                    HStack {
-                        Text("At least 2 existing presets")
-                        Spacer()
-                        RadioStatus(value: hasEnoughPresets)
-                    }
-                    HStack {
-                        Text("Temperature within 16ºC and 36ºC")
-                        Spacer()
-                        RadioStatus(value: isTemperatureInSupportedRange)
-                    }
-                    HStack {
-                        Text("Existing presets have a range of 2ºC")
-                        Spacer()
-                        RadioStatus(value: hasPresetTemperatureRange)
-                    }
-                }
-            } label: {
-                Text("Requirements")
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 5)
-            }
-            .font(.callout)
-        }
-    }
-
-    private struct AutoTimeAdditionalInfoDisclosure: View {
-        @Binding var isExpanded: Bool
-
-        var body: some View {
-            DisclosureGroup(isExpanded: $isExpanded) {
-                Text("Conversions are approximate and based on your existing presets. For important work always reference official data sheets")
-            } label: {
-                Text("Additional Information")
-                    .foregroundStyle(.secondary)
-                    .padding(.vertical, 5)
-            }
-            .font(.callout)
-        }
     }
 }
 
@@ -640,7 +634,7 @@ private struct SubstepEditor: View {
         tempDuration: [
             TemperatureDuration(temperature: 68, units: .fahrenheit, duration: 9.5 * 60),
             TemperatureDuration(temperature: 23, units: .celsius, duration: 10.5 * 60),
-            TemperatureDuration(temperature: nil, duration: 60)
+            TemperatureDuration(temperature: 21, units: .celsius, duration: 60, isAutoTime: true)
         ]
     )
     NavigationStack {
@@ -659,7 +653,7 @@ private struct SubstepEditor: View {
         substep: SubstepProcess(title:"Untitled Process", duration:15, gap: 45),
         tempDuration: [
             TemperatureDuration(temperature: 68, units: .fahrenheit, duration: 9.5 * 60),
-            TemperatureDuration(temperature: 23, units: .celsius, duration: 10.5 * 60)
+            TemperatureDuration(temperature: 23, units: .celsius, duration: 10.5 * 60, isAutoTime: true)
         ]
     )
     TempDurationEditorView(step: step)
