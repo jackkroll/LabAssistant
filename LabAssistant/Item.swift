@@ -214,10 +214,15 @@ final class SingleStep: Identifiable, Codable {
     @Relationship(deleteRule: .nullify) var associatedProcess: DevProcess?
 
     var totalDuration: TimeInterval?
+    var requestedTemperature: Double? = nil
+    private var requestedTemperatureUnitsSymbolStorage: String? = UnitTemperature.celsius.symbol
+    var usesAutoTimeTiming: Bool = false
     @Relationship(deleteRule: .cascade) var substep: SubstepProcess?
     @Relationship(deleteRule: .cascade, inverse: \TemperatureDuration.associatedStep) var tempDuration: [TemperatureDuration]? = nil
 
-    private enum CodingKeys: String, CodingKey { case id, index, title, notes, autoAdvance, totalDuration, substep, tempDuration }
+    private enum CodingKeys: String, CodingKey {
+        case id, index, title, notes, autoAdvance, totalDuration, requestedTemperature, requestedTemperatureUnitsSymbol, usesAutoTimeTiming, substep, tempDuration
+    }
 
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
@@ -229,8 +234,20 @@ final class SingleStep: Identifiable, Codable {
         self.associatedChemicals = []
         self.associatedProcess = nil
         self.totalDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .totalDuration)
+        self.requestedTemperature = try c.decodeIfPresent(Double.self, forKey: .requestedTemperature)
+        self.usesAutoTimeTiming = try c.decodeIfPresent(Bool.self, forKey: .usesAutoTimeTiming) ?? false
+        let requestedUnitsSymbol = try c.decodeIfPresent(String.self, forKey: .requestedTemperatureUnitsSymbol) ?? UnitTemperature.celsius.symbol
+        switch requestedUnitsSymbol {
+        case UnitTemperature.celsius.symbol,
+             UnitTemperature.fahrenheit.symbol,
+             UnitTemperature.kelvin.symbol:
+            self.requestedTemperatureUnitsSymbolStorage = requestedUnitsSymbol
+        default:
+            self.requestedTemperatureUnitsSymbolStorage = UnitTemperature.celsius.symbol
+        }
         self.substep = try c.decodeIfPresent(SubstepProcess.self, forKey: .substep)
         self.tempDuration = try c.decodeIfPresent([TemperatureDuration].self, forKey: .tempDuration)
+        migrateLegacyAutoTimePresetIfNeeded()
     }
 
     func encode(to encoder: Encoder) throws {
@@ -241,11 +258,14 @@ final class SingleStep: Identifiable, Codable {
         try c.encode(notes, forKey: .notes)
         try c.encode(autoAdvance, forKey: .autoAdvance)
         try c.encodeIfPresent(totalDuration, forKey: .totalDuration)
+        try c.encodeIfPresent(requestedTemperature, forKey: .requestedTemperature)
+        try c.encode(requestedTemperatureUnitsSymbolStorage, forKey: .requestedTemperatureUnitsSymbol)
+        try c.encode(usesAutoTimeTiming, forKey: .usesAutoTimeTiming)
         try c.encodeIfPresent(substep, forKey: .substep)
         try c.encodeIfPresent(tempDuration, forKey: .tempDuration)
     }
     
-    init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, substep: SubstepProcess? = nil, tempDuration: [TemperatureDuration]? = nil) {
+    init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, requestedTemperature: Double? = nil, requestedTemperatureUnits: UnitTemperature? = .celsius, usesAutoTimeTiming: Bool = false, substep: SubstepProcess? = nil, tempDuration: [TemperatureDuration]? = nil) {
         self.id = UUID()
         self.title = title
         self.index = index
@@ -253,21 +273,58 @@ final class SingleStep: Identifiable, Codable {
         self.autoAdvance = autoAdvance
         self.associatedChemicals = associatedChemicals
         self.totalDuration = totalDuration
+        self.requestedTemperature = requestedTemperature
+        self.requestedTemperatureUnitsSymbolStorage = requestedTemperatureUnits?.symbol
+        self.usesAutoTimeTiming = usesAutoTimeTiming
         self.substep = substep
         self.tempDuration = tempDuration
+        migrateLegacyAutoTimePresetIfNeeded()
     }
     
     convenience init(title: String, index: Int) {
         self.init(title: title, index: index, notes: "", autoAdvance: true, associatedChemicals: [], totalDuration: nil, substep: nil)
     }
 
-    var autoTimePreset: TemperatureDuration? {
-        tempDuration?.first(where: { $0.isAutoTime })
+    var requestedTemperatureUnits: UnitTemperature {
+        get {
+            switch requestedTemperatureUnitsSymbolStorage {
+            case UnitTemperature.celsius.symbol:
+                return .celsius
+            case UnitTemperature.fahrenheit.symbol:
+                return .fahrenheit
+            case UnitTemperature.kelvin.symbol:
+                return .kelvin
+            default:
+                return .celsius
+            }
+        }
+        set {
+            requestedTemperatureUnitsSymbolStorage = newValue.symbol
+        }
+    }
+
+    var requestedTemperatureMeasurement: Measurement<UnitTemperature>? {
+        guard let requestedTemperature else { return nil }
+        return Measurement(value: requestedTemperature, unit: requestedTemperatureUnits)
+    }
+
+    var currentPreset: TemperatureDuration? {
+        guard let totalDuration else { return nil }
+        return tempDuration?.first(where: { !$0.isAutoTime && $0.duration == totalDuration })
     }
 
     var autoTimeAvailability: Bool {
-        guard let autoTimePreset, let temperature = autoTimePreset.measurement else { return false }
-        return canEstimateTime(at: temperature, excluding: autoTimePreset)
+        guard let temperature = requestedTemperatureMeasurement else { return false }
+        return canEstimateTime(at: temperature)
+    }
+
+    var autoTimeDuration: TimeInterval? {
+        guard let temperature = requestedTemperatureMeasurement else { return nil }
+        return timeEstimate(at: temperature)?.duration
+    }
+
+    var isUsingAutoTimeFallback: Bool {
+        usesAutoTimeTiming
     }
 
     var autoTimeAvailabilityLabel: String {
@@ -275,34 +332,92 @@ final class SingleStep: Identifiable, Codable {
     }
 
     var sortedTemperatureDurations: [TemperatureDuration] {
-        (tempDuration ?? []).sorted { lhs, rhs in
-            if lhs.isAutoTime != rhs.isAutoTime {
-                return lhs.isAutoTime && !rhs.isAutoTime
+        (tempDuration ?? [])
+            .filter { !$0.isAutoTime }
+            .sorted { lhs, rhs in
+                lhs.duration > rhs.duration
             }
-            return lhs.duration > rhs.duration
-        }
     }
 
-    func setAutoTimePreset(_ preset: TemperatureDuration?) {
-        guard let tempDuration else { return }
-        for duration in tempDuration {
-            duration.isAutoTime = duration.id == preset?.id
-        }
+    @discardableResult
+    func recalculateAutoTimeDuration(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
+        guard usesAutoTimeTiming else { return totalDuration }
+        guard let estimate = calculatedAutoTimeDuration(excluding: excludedPreset) else { return nil }
+        totalDuration = estimate
+        return estimate
     }
 
     @discardableResult
     func recalculateAutoTimePreset(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
-        let target = excludedPreset?.isAutoTime == true ? excludedPreset : autoTimePreset
-        guard let target, let temperature = target.measurement else { return nil }
-        guard let estimate = timeEstimate(at: temperature, excluding: target)?.duration else { return nil }
-        target.duration = estimate
-        return estimate
+        return recalculateAutoTimeDuration(excluding: excludedPreset)
     }
-    
+
+    func preset(matching duration: TimeInterval?, excluding excludedPreset: TemperatureDuration? = nil) -> TemperatureDuration? {
+        guard let duration else { return nil }
+        return (tempDuration ?? []).first(where: { tempDuration in
+            guard !tempDuration.isAutoTime else { return false }
+            if let excludedPreset, tempDuration === excludedPreset {
+                return false
+            }
+            return tempDuration.duration == duration
+        })
+    }
+
+    func migrateLegacyAutoTimePresetIfNeeded() {
+        guard let legacyAutoTimePreset = tempDuration?.first(where: { $0.isAutoTime }) else { return }
+
+        if requestedTemperature == nil, let temperature = legacyAutoTimePreset.temperature {
+            requestedTemperature = temperature
+            requestedTemperatureUnits = legacyAutoTimePreset.units
+        }
+
+        if totalDuration == nil {
+            totalDuration = legacyAutoTimePreset.duration
+        }
+
+        usesAutoTimeTiming = true
+
+        tempDuration = tempDuration?.filter { !$0.isAutoTime }
+    }
+
+    func refreshAutoTimeDurationIfNeeded(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
+        return recalculateAutoTimeDuration(excluding: excludedPreset)
+    }
+
+    @discardableResult
+    func selectAutoTime(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
+        guard let duration = calculatedAutoTimeDuration(excluding: excludedPreset) else { return nil }
+        usesAutoTimeTiming = true
+        totalDuration = duration
+        return duration
+    }
+
+    func selectPreset(_ preset: TemperatureDuration) {
+        totalDuration = preset.duration
+        usesAutoTimeTiming = false
+    }
+
+    func setManualDuration(_ duration: TimeInterval?) {
+        totalDuration = duration
+        usesAutoTimeTiming = false
+    }
+
+    func turnOffAutoTime() {
+        usesAutoTimeTiming = false
+    }
+
+    private func calculatedAutoTimeDuration(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
+        guard let temperature = requestedTemperatureMeasurement else { return nil }
+        return timeEstimate(at: temperature, excluding: excludedPreset)?.duration
+    }
+
     private func temperatureEstimatePoints(excluding excludedPreset: TemperatureDuration? = nil) -> [(temperature: Double, duration: TimeInterval)] {
         (tempDuration ?? [])
             .compactMap { tempDuration -> (Double, TimeInterval)? in
                 if let excludedPreset, tempDuration === excludedPreset {
+                    return nil
+                }
+                if tempDuration.isAutoTime {
                     return nil
                 }
 
