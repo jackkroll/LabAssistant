@@ -32,9 +32,20 @@ struct DevelopView: View {
             ForEach(process.sortedSteps) { step in
                 VStack {
                     VStack {
-                        Text(step.title)
-                            .fontWeight(.bold)
-                            .font(.largeTitle)
+                        OrientationAdaptiveStack {
+                            Text(step.title)
+                                .fontWeight(.bold)
+                                .font(.largeTitle)
+                            if let presets = step.tempDuration?.count, presets > 0 {
+                                Button("Change Preset") {
+                                    withAnimation {
+                                        displayTempTimeOptions = true
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .controlSize(.large)
+                            }
+                        }
                         if step.associatedChemicals != nil && step.associatedChemicals!.count > 0 {
                             HStack {
                                 ForEach(step.associatedChemicals!) { chemical in

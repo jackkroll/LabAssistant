@@ -247,7 +247,6 @@ final class SingleStep: Identifiable, Codable {
         }
         self.substep = try c.decodeIfPresent(SubstepProcess.self, forKey: .substep)
         self.tempDuration = try c.decodeIfPresent([TemperatureDuration].self, forKey: .tempDuration)
-        migrateLegacyAutoTimePresetIfNeeded()
     }
 
     func encode(to encoder: Encoder) throws {
@@ -278,7 +277,6 @@ final class SingleStep: Identifiable, Codable {
         self.usesAutoTimeTiming = usesAutoTimeTiming
         self.substep = substep
         self.tempDuration = tempDuration
-        migrateLegacyAutoTimePresetIfNeeded()
     }
     
     convenience init(title: String, index: Int) {
@@ -310,21 +308,17 @@ final class SingleStep: Identifiable, Codable {
 
     var currentPreset: TemperatureDuration? {
         guard let totalDuration else { return nil }
-        return tempDuration?.first(where: { !$0.isAutoTime && $0.duration == totalDuration })
+        return tempDuration?.first(where: { $0.duration == totalDuration })
     }
 
     var autoTimeAvailability: Bool {
         guard let temperature = requestedTemperatureMeasurement else { return false }
         return canEstimateTime(at: temperature)
     }
-
+    
     var autoTimeDuration: TimeInterval? {
         guard let temperature = requestedTemperatureMeasurement else { return nil }
         return timeEstimate(at: temperature)?.duration
-    }
-
-    var isUsingAutoTimeFallback: Bool {
-        usesAutoTimeTiming
     }
 
     var autoTimeAvailabilityLabel: String {
@@ -333,7 +327,6 @@ final class SingleStep: Identifiable, Codable {
 
     var sortedTemperatureDurations: [TemperatureDuration] {
         (tempDuration ?? [])
-            .filter { !$0.isAutoTime }
             .sorted { lhs, rhs in
                 lhs.duration > rhs.duration
             }
@@ -355,29 +348,11 @@ final class SingleStep: Identifiable, Codable {
     func preset(matching duration: TimeInterval?, excluding excludedPreset: TemperatureDuration? = nil) -> TemperatureDuration? {
         guard let duration else { return nil }
         return (tempDuration ?? []).first(where: { tempDuration in
-            guard !tempDuration.isAutoTime else { return false }
             if let excludedPreset, tempDuration === excludedPreset {
                 return false
             }
             return tempDuration.duration == duration
         })
-    }
-
-    func migrateLegacyAutoTimePresetIfNeeded() {
-        guard let legacyAutoTimePreset = tempDuration?.first(where: { $0.isAutoTime }) else { return }
-
-        if requestedTemperature == nil, let temperature = legacyAutoTimePreset.temperature {
-            requestedTemperature = temperature
-            requestedTemperatureUnits = legacyAutoTimePreset.units
-        }
-
-        if totalDuration == nil {
-            totalDuration = legacyAutoTimePreset.duration
-        }
-
-        usesAutoTimeTiming = true
-
-        tempDuration = tempDuration?.filter { !$0.isAutoTime }
     }
 
     func refreshAutoTimeDurationIfNeeded(excluding excludedPreset: TemperatureDuration? = nil) -> TimeInterval? {
@@ -415,9 +390,6 @@ final class SingleStep: Identifiable, Codable {
         (tempDuration ?? [])
             .compactMap { tempDuration -> (Double, TimeInterval)? in
                 if let excludedPreset, tempDuration === excludedPreset {
-                    return nil
-                }
-                if tempDuration.isAutoTime {
                     return nil
                 }
 
@@ -585,7 +557,6 @@ final class TemperatureDuration: Codable {
     var temperature: Double? = 20
     private var unitsSymbolStorage: String? = UnitTemperature.celsius.symbol
     var duration: TimeInterval = 0
-    var isAutoTime: Bool = false
     var measurement: Measurement<UnitTemperature>? {
         if let temperature = temperature{
             Measurement(value: temperature, unit: units)
@@ -616,18 +587,16 @@ final class TemperatureDuration: Codable {
 
     private enum CodingKeys: String, CodingKey { case temperature, unitsSymbol, duration, isAutoTime }
 
-    init(temperature: Double?, units: UnitTemperature? = .celsius, duration: TimeInterval, isAutoTime: Bool = false) {
+    init(temperature: Double?, units: UnitTemperature? = .celsius, duration: TimeInterval) {
         self.temperature = temperature
         self.unitsSymbolStorage = units?.symbol
         self.duration = duration
-        self.isAutoTime = isAutoTime
     }
 
     required init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.temperature = try c.decodeIfPresent(Double.self, forKey: .temperature)
         self.duration = try c.decode(TimeInterval.self, forKey: .duration)
-        self.isAutoTime = try c.decodeIfPresent(Bool.self, forKey: .isAutoTime) ?? false
         let symbol = try c.decodeIfPresent(String.self, forKey: .unitsSymbol) ?? UnitTemperature.celsius.symbol
         switch symbol {
         case UnitTemperature.celsius.symbol,
@@ -644,7 +613,6 @@ final class TemperatureDuration: Codable {
         try c.encode(temperature, forKey: .temperature)
         try c.encode(duration, forKey: .duration)
         try c.encode(unitsSymbolStorage, forKey: .unitsSymbol)
-        try c.encode(isAutoTime, forKey: .isAutoTime)
     }
 }
 

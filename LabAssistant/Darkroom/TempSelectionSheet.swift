@@ -11,14 +11,12 @@ struct TempSelectionSheet: View {
     @Environment(\.dismiss) private var dismiss
     let step : SingleStep
     @State private var displayRemovalAlert: Bool = false
+    @State private var requestedAutoTemp: Double = 20
     var body: some View {
         ScrollView {
             let currentPreset = step.currentPreset
             let availablePresets = step.sortedTemperatureDurations.filter { $0.duration != step.totalDuration }
             let autoTimeDuration = step.autoTimeDuration
-            let autoTimeBackground: AnyShapeStyle = step.usesAutoTimeTiming
-                ? AnyShapeStyle(Color.primary)
-                : AnyShapeStyle(Material.thick)
 
             if let totalDuration = step.totalDuration {
                 HStack {
@@ -52,39 +50,55 @@ struct TempSelectionSheet: View {
                 .font(.title3)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(.primary)
+                .background(.bar)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .bold()
                 Divider()
             }
 
             if let autoTimeDuration {
-                Text("Auto Time")
-                    .bold()
-                    .padding(.top, 4)
                 HStack {
-                    Label("Auto Time", systemImage: "bolt.badge.clock.fill")
-                        .fontWeight(.semibold)
-                    if let requestedTemperature = step.requestedTemperatureMeasurement {
-                        Text("@ \(requestedTemperature.value.formatted(.number))\(requestedTemperature.unit.symbol)")
-                    }
-                    Spacer(minLength: 0)
-                    Text(autoTimeDuration.formatToMinSec())
+                    Text("Auto Time")
                     if step.usesAutoTimeTiming {
-                        Text("Selected")
+                        Text("(Selected)")
                             .foregroundStyle(.secondary)
                     }
+                }
+                .bold()
+                .padding(.top, 4)
+                
+                
+                HStack {
+                    if step.usesAutoTimeTiming {
+                        Stepper("Requested Temperature", value: $requestedAutoTemp, in: 16...36)
+                            .onAppear {
+                                requestedAutoTemp = step.requestedTemperature ?? 20
+                            }
+                            .onChange(of: requestedAutoTemp) { _, new in
+                                step.requestedTemperature = new
+                                _ = step.selectAutoTime()
+                            }
+                    }
+                    else {
+                        Label("Auto Time", systemImage: "bolt.badge.clock.fill")
+                            .fontWeight(.semibold)
+                        if let requestedTemperature = step.requestedTemperatureMeasurement {
+                            Text("@ \(requestedTemperature.value.formatted(.number))\(requestedTemperature.unit.symbol)")
+                        }
+                        Spacer(minLength: 0)
+                        Text(autoTimeDuration.formatToMinSec())
+                    }
+                    
                 }
                 .font(.title3)
                 .padding()
                 .frame(maxWidth: .infinity)
-                .background(autoTimeBackground)
+                .background(.bar)
                 .clipShape(RoundedRectangle(cornerRadius: 12))
                 .bold()
                 .onTapGesture {
                     if !step.usesAutoTimeTiming {
                         _ = step.selectAutoTime()
-                        dismiss()
                     }
                 }
             }
@@ -104,7 +118,7 @@ struct TempSelectionSheet: View {
                     .font(.title3)
                     .padding()
                     .frame(maxWidth: .infinity)
-                    .background(Material.thick)
+                    .background(.bar)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                     .bold()
                     .onTapGesture {
@@ -147,7 +161,6 @@ struct TempSelectionSheet: View {
     private func selectPreset(preset: TemperatureDuration) {
         withAnimation {
             step.selectPreset(preset)
-            dismiss()
         }
     }
 }
@@ -159,14 +172,13 @@ struct TempSelectionSheet: View {
     }
     .sheet(isPresented: $isPresented) {
         NavigationStack {
-            TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: [], totalDuration: 500, requestedTemperature: 20, requestedTemperatureUnits: .celsius, tempDuration: [.init(temperature: 20, units: .celsius, duration: 9*60), .init(temperature: nil, duration: 5*60)]))
-                .presentationDetents([.medium, .large])
+            TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: [], totalDuration: 9*60, requestedTemperature: 21, requestedTemperatureUnits: .celsius, tempDuration: [.init(temperature: 20, units: .celsius, duration: 9*60), .init(temperature: 22, duration: 8*60)]))
         }
     }
 }
 
 #Preview {
-    TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: [], totalDuration: 9*60, requestedTemperature: 20, requestedTemperatureUnits: .celsius, tempDuration: [.init(temperature: 20, units: .celsius, duration: 9*60)]))
+    TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: [], totalDuration: 9*60, requestedTemperature: 21, requestedTemperatureUnits: .celsius, tempDuration: [.init(temperature: 20, units: .celsius, duration: 9*60), .init(temperature: 22, duration: 8*60)]))
 }
 #Preview {
     TempSelectionSheet(step: SingleStep(title: "Test Step", index: 0, autoAdvance: false, associatedChemicals: []))

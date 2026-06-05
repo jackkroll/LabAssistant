@@ -22,7 +22,7 @@ struct UpsellView: View {
     
     var body: some View {
         NavigationStack {
-                VStack {
+                ScrollView {
                     header
                     features
                     Spacer()
@@ -31,8 +31,8 @@ struct UpsellView: View {
                     purchaseSupportActions
             }
                 .padding()
-            .navigationTitle("Lab Assistant Pro")
-            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle("Unlock Pro")
+            .toolbarTitleDisplayMode(.inlineLarge)
             .toolbar {
                 Button(role: .cancel) {
                     dismiss()
@@ -54,18 +54,6 @@ struct UpsellView: View {
     
     private var header: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .firstTextBaseline) {
-                Text("Unlock Pro")
-                    .font(.title.bold())
-                    .fixedSize(horizontal: false, vertical: true)
-                
-                Spacer()
-                
-                Image(systemName: "flask.fill")
-                    .font(.title2)
-                    .foregroundStyle(.red)
-            }
-            
             Text("Create as many development processes as you need, then save temperature and time presets for repeatable sessions.")
                 .font(.body)
                 .foregroundStyle(.secondary)
@@ -79,7 +67,7 @@ struct UpsellView: View {
                 UpsellFeatureRow(
                     iconName: "infinity",
                     title: "Unlimited Processes",
-                    description: "Build and keep every workflow you use without hitting a saved-process limit."
+                    description: "Build and keep every workflow you use without limits"
                 )
                 
                 Divider()
@@ -89,6 +77,7 @@ struct UpsellView: View {
                     title: "Temperature/Time Presets",
                     description: "Save development times for different temperatures and switch between them while editing or developing."
                 )
+                UpsellFeatureRow(iconName: "bolt.badge.clock.fill", title: "Auto Time", description: "Automatically calculate adjusted development time based on the current temperature")
                 Divider()
                 
                 UpsellFeatureRow(
@@ -143,7 +132,7 @@ struct UpsellView: View {
                             Image(systemName: "flask.fill")
                         }
                         
-                        Text("Lab Assistant Pro")
+                        Text("Purchase")
                             .fontWeight(.semibold)
                         
                         Spacer()
