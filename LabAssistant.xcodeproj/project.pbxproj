@@ -10,11 +10,34 @@
 		567C35542EBF948300D48E56 /* CloudKitSyncMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 567C35532EBF948300D48E56 /* CloudKitSyncMonitor */; };
 		56934CF62FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 56934CF52FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit */; };
 		56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */ = {isa = PBXBuildFile; productRef = 56EB2D9B2EB9969C008E7EF6 /* Onboarding */; };
+		5A0000000000000000000040 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000003 /* XCTest.framework */; };
+		5A0000000000000000000041 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000003 /* XCTest.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		56875E452FD3631600A77C9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56830FAC2E89BDC40084D321 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56830FB32E89BDC40084D321;
+			remoteInfo = LabAssistant;
+		};
+		5A0000000000000000000042 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56830FAC2E89BDC40084D321 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56830FB32E89BDC40084D321;
+			remoteInfo = LabAssistant;
+		};
+/* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
 		56830FB42E89BDC40084D321 /* LabAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LabAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		56875E442FD3628100A77C9E /* LabAssistantTests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LabAssistantTests.xctestplan; sourceTree = "<group>"; };
 		56934CF52FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Lab Assistant: Darkroom Timer.storekit"; sourceTree = "<group>"; };
+		5A0000000000000000000001 /* LabAssistantTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LabAssistantTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0000000000000000000002 /* LabAssistantUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LabAssistantUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		5A0000000000000000000003 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = XCTest.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -36,6 +59,16 @@
 			path = LabAssistant;
 			sourceTree = "<group>";
 		};
+		5A0000000000000000000010 /* LabAssistantTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LabAssistantTests;
+			sourceTree = "<group>";
+		};
+		5A0000000000000000000011 /* LabAssistantUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LabAssistantUITests;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,15 +81,35 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A0000000000000000000031 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A0000000000000000000040 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0000000000000000000034 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5A0000000000000000000041 /* XCTest.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		56830FAB2E89BDC40084D321 = {
 			isa = PBXGroup;
 			children = (
+				56875E442FD3628100A77C9E /* LabAssistantTests.xctestplan */,
 				56934CF52FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit */,
 				56830FB62E89BDC40084D321 /* LabAssistant */,
+				5A0000000000000000000010 /* LabAssistantTests */,
+				5A0000000000000000000011 /* LabAssistantUITests */,
 				56830FB52E89BDC40084D321 /* Products */,
+				56875E0E2FD3616D00A77C9E /* Recovered References */,
 			);
 			sourceTree = "<group>";
 		};
@@ -64,8 +117,18 @@
 			isa = PBXGroup;
 			children = (
 				56830FB42E89BDC40084D321 /* LabAssistant.app */,
+				5A0000000000000000000001 /* LabAssistantTests.xctest */,
+				5A0000000000000000000002 /* LabAssistantUITests.xctest */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		56875E0E2FD3616D00A77C9E /* Recovered References */ = {
+			isa = PBXGroup;
+			children = (
+				5A0000000000000000000003 /* XCTest.framework */,
+			);
+			name = "Recovered References";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -95,6 +158,48 @@
 			productReference = 56830FB42E89BDC40084D321 /* LabAssistant.app */;
 			productType = "com.apple.product-type.application";
 		};
+		5A0000000000000000000020 /* LabAssistantTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0000000000000000000046 /* Build configuration list for PBXNativeTarget "LabAssistantTests" */;
+			buildPhases = (
+				5A0000000000000000000030 /* Sources */,
+				5A0000000000000000000031 /* Frameworks */,
+				5A0000000000000000000032 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				5A0000000000000000000043 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5A0000000000000000000010 /* LabAssistantTests */,
+			);
+			name = LabAssistantTests;
+			productName = LabAssistantTests;
+			productReference = 5A0000000000000000000001 /* LabAssistantTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		5A0000000000000000000021 /* LabAssistantUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5A0000000000000000000049 /* Build configuration list for PBXNativeTarget "LabAssistantUITests" */;
+			buildPhases = (
+				5A0000000000000000000033 /* Sources */,
+				5A0000000000000000000034 /* Frameworks */,
+				5A0000000000000000000035 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				56875E462FD3631600A77C9E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				5A0000000000000000000011 /* LabAssistantUITests */,
+			);
+			name = LabAssistantUITests;
+			productName = LabAssistantUITests;
+			productReference = 5A0000000000000000000002 /* LabAssistantUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -107,6 +212,9 @@
 				TargetAttributes = {
 					56830FB32E89BDC40084D321 = {
 						CreatedOnToolsVersion = 26.0.1;
+					};
+					5A0000000000000000000021 = {
+						TestTargetID = 56830FB32E89BDC40084D321;
 					};
 				};
 			};
@@ -129,6 +237,8 @@
 			projectRoot = "";
 			targets = (
 				56830FB32E89BDC40084D321 /* LabAssistant */,
+				5A0000000000000000000020 /* LabAssistantTests */,
+				5A0000000000000000000021 /* LabAssistantUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -142,6 +252,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A0000000000000000000032 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0000000000000000000035 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -152,7 +276,34 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		5A0000000000000000000030 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		5A0000000000000000000033 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		56875E462FD3631600A77C9E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56830FB32E89BDC40084D321 /* LabAssistant */;
+			targetProxy = 56875E452FD3631600A77C9E /* PBXContainerItemProxy */;
+		};
+		5A0000000000000000000043 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56830FB32E89BDC40084D321 /* LabAssistant */;
+			targetProxy = 5A0000000000000000000042 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		56830FBF2E89BDC50084D321 /* Debug */ = {
@@ -344,6 +495,106 @@
 			};
 			name = Release;
 		};
+		5A0000000000000000000044 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZS9H682SJQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/Frameworks",
+					"@loader_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.21;
+				PRODUCT_BUNDLE_IDENTIFIER = JackKroll.LabAssistantTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LabAssistant.app/LabAssistant";
+			};
+			name = Debug;
+		};
+		5A0000000000000000000045 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZS9H682SJQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@loader_path/Frameworks",
+					"@loader_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.21;
+				PRODUCT_BUNDLE_IDENTIFIER = JackKroll.LabAssistantTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/LabAssistant.app/LabAssistant";
+			};
+			name = Release;
+		};
+		5A0000000000000000000047 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZS9H682SJQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.21;
+				PRODUCT_BUNDLE_IDENTIFIER = JackKroll.LabAssistantUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LabAssistant;
+			};
+			name = Debug;
+		};
+		5A0000000000000000000048 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZS9H682SJQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.21;
+				PRODUCT_BUNDLE_IDENTIFIER = JackKroll.LabAssistantUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LabAssistant;
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -361,6 +612,24 @@
 			buildConfigurations = (
 				56830FC22E89BDC50084D321 /* Debug */,
 				56830FC32E89BDC50084D321 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0000000000000000000046 /* Build configuration list for PBXNativeTarget "LabAssistantTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0000000000000000000044 /* Debug */,
+				5A0000000000000000000045 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		5A0000000000000000000049 /* Build configuration list for PBXNativeTarget "LabAssistantUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				5A0000000000000000000047 /* Debug */,
+				5A0000000000000000000048 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

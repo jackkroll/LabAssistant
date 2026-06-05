@@ -48,7 +48,10 @@ struct ProcessView: View {
                                                 .scaledToFit()
                                                 .frame(width: 40, height: 40)
                                                 .tint(.green)
+                                                
                                         }
+                                        .accessibilityLabel(Text("Start"))
+                                        
                                         
                                         NavigationLink {
                                             ProcessEditView(process: process)
@@ -59,6 +62,7 @@ struct ProcessView: View {
                                                 .frame(width: 40, height: 40)
                                                 .tint(.blue)
                                         }
+                                        .accessibilityLabel(Text("Edit"))
                                         
                                         Spacer()
                                         Button(role:.destructive) {
@@ -71,6 +75,7 @@ struct ProcessView: View {
                                                 .scaledToFit()
                                                 .frame(width: 40, height: 40)
                                         }
+                                        .accessibilityLabel(Text("Delete"))
                                     }
                                 }
                         }

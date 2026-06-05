@@ -175,6 +175,7 @@ struct DevelopView: View {
                             .frame(width: 75, height: 75)
                             .contentTransition(.symbolEffect(.replace))
                     }
+                    .accessibilityLabel(step.index == 0 ? "end" : "previous" )
                     
                     Spacer()
                     
@@ -192,6 +193,7 @@ struct DevelopView: View {
                                 .contentTransition(.symbolEffect(.replace))
                         }
                         .animation(.easeInOut, value: isPaused)
+                        .accessibilityLabel("restart")
                         
                         Button {
                             if isPaused {
@@ -211,6 +213,7 @@ struct DevelopView: View {
                                 .frame(width: 75, height: 75)
                                 .contentTransition(.symbolEffect(.replace))
                         }
+                        .accessibilityLabel(isPaused ? "play" : "pause")
                     }
                     
                     
@@ -232,6 +235,7 @@ struct DevelopView: View {
                             .scaledToFit()
                             .frame(width: 75, height: 75)
                     }
+                    .accessibilityLabel(selectedTab == process.sortedSteps.count - 1 ? "end" : "next")
                 }
                 .padding()
             }

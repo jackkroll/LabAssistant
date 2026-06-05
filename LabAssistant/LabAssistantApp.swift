@@ -8,35 +8,134 @@
 import SwiftUI
 import SwiftData
 import Onboarding
+import Foundation
 
-@main
-struct LabAssistantApp: App {
-    var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Chemical.self,
-            Tag.self,
-            DevProcess.self,
-            SingleStep.self,
-            SubstepProcess.self,
-            TemperatureDuration.self
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-        
+enum LabAssistantLaunchConfiguration {
+    static let uiTestingArgument = "-ui-testing"
+    static let uiTestingExampleDataArgument = "-ui-testing-example-data"
+
+    static var isRunningUITests: Bool {
+        ProcessInfo.processInfo.arguments.contains(uiTestingArgument)
+    }
+
+    static var shouldSeedExampleData: Bool {
+        ProcessInfo.processInfo.arguments.contains(uiTestingExampleDataArgument)
+    }
+
+    static let schema = Schema([
+        Chemical.self,
+        Tag.self,
+        DevProcess.self,
+        SingleStep.self,
+        SubstepProcess.self,
+        TemperatureDuration.self
+    ])
+
+    static func makeModelContainer() -> ModelContainer {
+        let modelConfiguration = ModelConfiguration(
+            schema: schema,
+            isStoredInMemoryOnly: isRunningUITests
+        )
+
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            if shouldSeedExampleData {
+                seedExampleData(in: container.mainContext)
+            }
+            return container
         } catch {
             fatalError("Could not create ModelContainer: \(error)")
         }
-    }()
+    }
+
+    static func seedExampleData(in context: ModelContext) {
+        let safeTag = Tag(title: "Safe")
+        let chemicalTag = Tag(title: "Chemical")
+        let developerTag = Tag(title: "Developer")
+
+        let water = Chemical(
+            nickname: "Water",
+            expiryDate: Calendar.current.date(byAdding: .day, value: 365, to: .now),
+            max: 1000,
+            current: 850,
+            notes: "Example stock solution",
+            tags: [safeTag, chemicalTag],
+            units: .ml
+        )
+
+        let ddx = Chemical(
+            nickname: "Ilfotec DD-X",
+            expiryDate: Calendar.current.date(byAdding: .month, value: 6, to: .now),
+            max: 500,
+            current: 250,
+            notes: "Example developer",
+            tags: [developerTag, chemicalTag],
+            units: .ml
+        )
+
+        let agitation = SubstepProcess(title: "Agitation", duration: 10, gap: 50)
+        let sampleSteps = [
+            SingleStep(
+                title: "Prepare Chemicals",
+                index: 0,
+                notes: "Set up the tank and measuring cylinders.",
+                autoAdvance: true,
+                associatedChemicals: [ddx],
+                totalDuration: 120
+            ),
+            SingleStep(
+                title: "Develop",
+                index: 1,
+                notes: "Use the sample developer timing.",
+                autoAdvance: false,
+                associatedChemicals: [ddx],
+                totalDuration: 540,
+                substep: agitation
+            ),
+            SingleStep(
+                title: "Wash",
+                index: 2,
+                notes: "Rinse thoroughly.",
+                autoAdvance: true,
+                associatedChemicals: [water],
+                totalDuration: 420
+            )
+        ]
+
+        let process = DevProcess(
+            nickname: "HP5+ in DD-X",
+            notes: "Example process used by UI tests.",
+            steps: sampleSteps
+        )
+
+        context.insert(safeTag)
+        context.insert(chemicalTag)
+        context.insert(developerTag)
+        context.insert(water)
+        context.insert(ddx)
+        context.insert(process)
+
+        try? context.save()
+    }
+}
+
+@main
+struct LabAssistantApp: App {
+    var sharedModelContainer: ModelContainer = LabAssistantLaunchConfiguration.makeModelContainer()
     
     var body: some Scene {
         WindowGroup {
-            HomeScreenView()
-                .showOnboardingIfNeeded(
-                    config: .production,
-                    appIcon: Image("AppIcon")
-                )
-            
+            Group {
+                if LabAssistantLaunchConfiguration.isRunningUITests {
+                    HomeScreenView()
+                } else {
+                    HomeScreenView()
+                        .showOnboardingIfNeeded(
+                            config: .production,
+                            appIcon: Image("AppIcon")
+                        )
+                }
+            }
         }
         .modelContainer(sharedModelContainer)
     }

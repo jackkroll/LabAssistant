@@ -1,0 +1,31 @@
+{
+  "configurations" : [
+    {
+      "id" : "5BAA314B-E96E-4DEF-8C38-547FB74DA3CE",
+      "name" : "Test Scheme Action",
+      "options" : {
+
+      }
+    }
+  ],
+  "defaultOptions" : {
+    "performanceAntipatternCheckerEnabled" : true
+  },
+  "testTargets" : [
+    {
+      "target" : {
+        "containerPath" : "container:LabAssistant.xcodeproj",
+        "identifier" : "5A0000000000000000000020",
+        "name" : "LabAssistantTests"
+      }
+    },
+    {
+      "target" : {
+        "containerPath" : "container:LabAssistant.xcodeproj",
+        "identifier" : "5A0000000000000000000021",
+        "name" : "LabAssistantUITests"
+      }
+    }
+  ],
+  "version" : 1
+}
