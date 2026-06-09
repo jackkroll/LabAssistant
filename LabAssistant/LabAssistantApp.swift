@@ -49,29 +49,49 @@ enum LabAssistantLaunchConfiguration {
     }
 
     static func seedExampleData(in context: ModelContext) {
-        let safeTag = Tag(title: "Safe")
-        let chemicalTag = Tag(title: "Chemical")
-        let developerTag = Tag(title: "Developer")
+        let concentrate = Tag(title: "Concentrate")
+        let workingSol = Tag(title: "Working Solution")
 
         let water = Chemical(
-            nickname: "Water",
-            expiryDate: Calendar.current.date(byAdding: .day, value: 365, to: .now),
+            nickname: "Distilled Water",
+            expiryDate: nil,
             max: 1000,
             current: 850,
-            notes: "Example stock solution",
-            tags: [safeTag, chemicalTag],
+            notes: "",
+            tags: [],
             units: .ml
         )
 
         let ddx = Chemical(
-            nickname: "Ilfotec DD-X",
+            nickname: "DD-X Concentrate",
             expiryDate: Calendar.current.date(byAdding: .month, value: 6, to: .now),
             max: 500,
             current: 250,
             notes: "Example developer",
-            tags: [developerTag, chemicalTag],
+            tags: [concentrate],
             units: .ml
         )
+        
+        let workingSolution = Chemical(
+            nickname: "DD-X",
+            expiryDate: Calendar.current.date(byAdding: .day, value: 7, to: .now),
+            max: 1000,
+            current: 100,
+            notes: "",
+            tags: [workingSol],
+            units: .ml
+        )
+        
+        let expired = Chemical(
+            nickname: "DF96",
+            expiryDate: .distantPast,
+            max: 1000,
+            current: 100,
+            notes: "",
+            tags: [workingSol],
+            units: .ml
+        )
+        
 
         let agitation = SubstepProcess(title: "Agitation", duration: 10, gap: 50)
         let sampleSteps = [
@@ -104,16 +124,17 @@ enum LabAssistantLaunchConfiguration {
 
         let process = DevProcess(
             nickname: "HP5+ in DD-X",
-            notes: "Example process used by UI tests.",
+            notes: "",
             steps: sampleSteps
         )
 
-        context.insert(safeTag)
-        context.insert(chemicalTag)
-        context.insert(developerTag)
+        context.insert(workingSol)
+        context.insert(concentrate)
         context.insert(water)
+        context.insert(workingSolution)
         context.insert(ddx)
         context.insert(process)
+        context.insert(expired)
 
         try? context.save()
     }

@@ -136,7 +136,7 @@ struct ProcessEditView: View {
                         }
                     }
                 }
-                .navigationTitle("New Process")
+                .navigationTitle("Edit Process")
                 .navigationBarTitleDisplayMode(.inline)
                 //.onDisappear(perform: save)
                 

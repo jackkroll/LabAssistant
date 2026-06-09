@@ -14,9 +14,25 @@
             filePath = "LabAssistantUITests/LabAssistantUITests.swift"
             startingColumnNumber = "9223372036854775807"
             endingColumnNumber = "9223372036854775807"
-            startingLineNumber = "75"
-            endingLineNumber = "75"
-            landmarkName = "testDevelopButtonsBehave()"
+            startingLineNumber = "80"
+            endingLineNumber = "80"
+            landmarkName = "testNextAndEndButtons()"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "98C9200E-053F-437C-8D43-11F00BF4BB9E"
+            shouldBeEnabled = "No"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "LabAssistantScreenshots/LabAssistantScreenshots.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "16"
+            endingLineNumber = "16"
+            landmarkName = "testScreenshots()"
             landmarkType = "7">
          </BreakpointContent>
       </BreakpointProxy>

@@ -27,7 +27,8 @@ struct ProcessView: View {
                     }
                 }
                 else {
-                    ForEach(processes){ process in
+                    ScrollView {
+                        ForEach(processes){ process in
                             GroupBox {
                                 VStack {
                                     HStack {
@@ -48,7 +49,7 @@ struct ProcessView: View {
                                                 .scaledToFit()
                                                 .frame(width: 40, height: 40)
                                                 .tint(.green)
-                                                
+                                            
                                         }
                                         .accessibilityLabel(Text("Start"))
                                         
@@ -78,36 +79,38 @@ struct ProcessView: View {
                                         .accessibilityLabel(Text("Delete"))
                                     }
                                 }
+                            }
+                        }
+                        Spacer()
+                    }
+                }
+                }
+                    .padding()
+                    .toolbar {
+                        ToolbarItem {
+                            Image(systemName: syncMonitor.syncStateSummary.symbolName)
+                                .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
+                                .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolColor)
+                                .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolName)
+                        }
+                        ToolbarSpacer()
+                        ToolbarItem(placement: .primaryAction){
+                            Button{
+                                addProcessSheet = true
+                            } label: {
+                                Label("Add Item", systemImage: "plus")
+                            }
                         }
                     }
-                    Spacer()
-                }
-            }
-            .padding()
-            .toolbar {
-                ToolbarItem {
-                    Image(systemName: syncMonitor.syncStateSummary.symbolName)
-                        .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
-                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolColor)
-                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolName)
-                }
-                ToolbarSpacer()
-                ToolbarItem(placement: .primaryAction){
-                    Button{
-                        addProcessSheet = true
-                    } label: {
-                        Label("Add Item", systemImage: "plus")
+                    .navigationDestination(for: DevProcess.self) { process in
+                        DevelopView(process: process)
                     }
-                }
             }
-            .navigationDestination(for: DevProcess.self) { process in
-                    DevelopView(process: process)
+            
+            .sheet(isPresented: $addProcessSheet) {
+                AddProcessSheet()
             }
-        }
-        
-        .sheet(isPresented: $addProcessSheet) {
-            AddProcessSheet()
-        }
+
         
     }
 }

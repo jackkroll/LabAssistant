@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		567C35542EBF948300D48E56 /* CloudKitSyncMonitor in Frameworks */ = {isa = PBXBuildFile; productRef = 567C35532EBF948300D48E56 /* CloudKitSyncMonitor */; };
 		56934CF62FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 56934CF52FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit */; };
+		56C2CE872FD85BB70001038E /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 56C2CE862FD85BB70001038E /* XCTest.framework */; };
 		56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */ = {isa = PBXBuildFile; productRef = 56EB2D9B2EB9969C008E7EF6 /* Onboarding */; };
 		5A0000000000000000000040 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000003 /* XCTest.framework */; };
 		5A0000000000000000000041 /* XCTest.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5A0000000000000000000003 /* XCTest.framework */; };
@@ -16,6 +17,13 @@
 
 /* Begin PBXContainerItemProxy section */
 		56875E452FD3631600A77C9E /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 56830FAC2E89BDC40084D321 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 56830FB32E89BDC40084D321;
+			remoteInfo = LabAssistant;
+		};
+		56C2CE802FD85BAB0001038E /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = 56830FAC2E89BDC40084D321 /* Project object */;
 			proxyType = 1;
@@ -35,6 +43,9 @@
 		56830FB42E89BDC40084D321 /* LabAssistant.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LabAssistant.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		56875E442FD3628100A77C9E /* LabAssistantTests.xctestplan */ = {isa = PBXFileReference; lastKnownFileType = text; path = LabAssistantTests.xctestplan; sourceTree = "<group>"; };
 		56934CF52FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Lab Assistant: Darkroom Timer.storekit"; sourceTree = "<group>"; };
+		56C2CE7A2FD85BAB0001038E /* LabAssistantScreenshots.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LabAssistantScreenshots.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		56C2CE862FD85BB70001038E /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Platforms/iPhoneOS.platform/Developer/Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		56C2CE8A2FD85C9C0001038E /* SnapshotHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = SnapshotHelper.swift; path = fastlane/SnapshotHelper.swift; sourceTree = "<group>"; };
 		5A0000000000000000000001 /* LabAssistantTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LabAssistantTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A0000000000000000000002 /* LabAssistantUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = LabAssistantUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		5A0000000000000000000003 /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; path = XCTest.framework; sourceTree = SDKROOT; };
@@ -59,6 +70,11 @@
 			path = LabAssistant;
 			sourceTree = "<group>";
 		};
+		56C2CE7B2FD85BAB0001038E /* LabAssistantScreenshots */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = LabAssistantScreenshots;
+			sourceTree = "<group>";
+		};
 		5A0000000000000000000010 /* LabAssistantTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = LabAssistantTests;
@@ -78,6 +94,14 @@
 			files = (
 				56EB2D9C2EB9969C008E7EF6 /* Onboarding in Frameworks */,
 				567C35542EBF948300D48E56 /* CloudKitSyncMonitor in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56C2CE772FD85BAB0001038E /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				56C2CE872FD85BB70001038E /* XCTest.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -108,8 +132,10 @@
 				56830FB62E89BDC40084D321 /* LabAssistant */,
 				5A0000000000000000000010 /* LabAssistantTests */,
 				5A0000000000000000000011 /* LabAssistantUITests */,
+				56C2CE7B2FD85BAB0001038E /* LabAssistantScreenshots */,
 				56830FB52E89BDC40084D321 /* Products */,
 				56875E0E2FD3616D00A77C9E /* Recovered References */,
+				56C2CE852FD85BB70001038E /* Frameworks */,
 			);
 			sourceTree = "<group>";
 		};
@@ -119,6 +145,7 @@
 				56830FB42E89BDC40084D321 /* LabAssistant.app */,
 				5A0000000000000000000001 /* LabAssistantTests.xctest */,
 				5A0000000000000000000002 /* LabAssistantUITests.xctest */,
+				56C2CE7A2FD85BAB0001038E /* LabAssistantScreenshots.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -129,6 +156,15 @@
 				5A0000000000000000000003 /* XCTest.framework */,
 			);
 			name = "Recovered References";
+			sourceTree = "<group>";
+		};
+		56C2CE852FD85BB70001038E /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				56C2CE8A2FD85C9C0001038E /* SnapshotHelper.swift */,
+				56C2CE862FD85BB70001038E /* XCTest.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -157,6 +193,29 @@
 			productName = LabAssistant;
 			productReference = 56830FB42E89BDC40084D321 /* LabAssistant.app */;
 			productType = "com.apple.product-type.application";
+		};
+		56C2CE792FD85BAB0001038E /* LabAssistantScreenshots */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 56C2CE842FD85BAB0001038E /* Build configuration list for PBXNativeTarget "LabAssistantScreenshots" */;
+			buildPhases = (
+				56C2CE762FD85BAB0001038E /* Sources */,
+				56C2CE772FD85BAB0001038E /* Frameworks */,
+				56C2CE782FD85BAB0001038E /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				56C2CE812FD85BAB0001038E /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				56C2CE7B2FD85BAB0001038E /* LabAssistantScreenshots */,
+			);
+			name = LabAssistantScreenshots;
+			packageProductDependencies = (
+			);
+			productName = LabAssistantScreenshots;
+			productReference = 56C2CE7A2FD85BAB0001038E /* LabAssistantScreenshots.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
 		};
 		5A0000000000000000000020 /* LabAssistantTests */ = {
 			isa = PBXNativeTarget;
@@ -207,11 +266,15 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 2600;
+				LastSwiftUpdateCheck = 2650;
 				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					56830FB32E89BDC40084D321 = {
 						CreatedOnToolsVersion = 26.0.1;
+					};
+					56C2CE792FD85BAB0001038E = {
+						CreatedOnToolsVersion = 26.5;
+						TestTargetID = 56830FB32E89BDC40084D321;
 					};
 					5A0000000000000000000021 = {
 						TestTargetID = 56830FB32E89BDC40084D321;
@@ -239,6 +302,7 @@
 				56830FB32E89BDC40084D321 /* LabAssistant */,
 				5A0000000000000000000020 /* LabAssistantTests */,
 				5A0000000000000000000021 /* LabAssistantUITests */,
+				56C2CE792FD85BAB0001038E /* LabAssistantScreenshots */,
 			);
 		};
 /* End PBXProject section */
@@ -249,6 +313,13 @@
 			buildActionMask = 2147483647;
 			files = (
 				56934CF62FCA26570060967D /* Lab Assistant: Darkroom Timer.storekit in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		56C2CE782FD85BAB0001038E /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -276,6 +347,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		56C2CE762FD85BAB0001038E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		5A0000000000000000000030 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -297,6 +375,11 @@
 			isa = PBXTargetDependency;
 			target = 56830FB32E89BDC40084D321 /* LabAssistant */;
 			targetProxy = 56875E452FD3631600A77C9E /* PBXContainerItemProxy */;
+		};
+		56C2CE812FD85BAB0001038E /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 56830FB32E89BDC40084D321 /* LabAssistant */;
+			targetProxy = 56C2CE802FD85BAB0001038E /* PBXContainerItemProxy */;
 		};
 		5A0000000000000000000043 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -495,6 +578,52 @@
 			};
 			name = Release;
 		};
+		56C2CE822FD85BAB0001038E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZS9H682SJQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.JackKroll.LabAssistantScreenshots;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LabAssistant;
+			};
+			name = Debug;
+		};
+		56C2CE832FD85BAB0001038E /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = ZS9H682SJQ;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.JackKroll.LabAssistantScreenshots;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_TARGET_NAME = LabAssistant;
+			};
+			name = Release;
+		};
 		5A0000000000000000000044 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -612,6 +741,15 @@
 			buildConfigurations = (
 				56830FC22E89BDC50084D321 /* Debug */,
 				56830FC32E89BDC50084D321 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		56C2CE842FD85BAB0001038E /* Build configuration list for PBXNativeTarget "LabAssistantScreenshots" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				56C2CE822FD85BAB0001038E /* Debug */,
+				56C2CE832FD85BAB0001038E /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

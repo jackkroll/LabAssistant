@@ -22,14 +22,16 @@ struct DevelopView: View {
     
     @State var isPaused : Bool = false
     @State var displayTempTimeOptions : Bool = false
-    var currentStep : SingleStep {
-        process.sortedSteps[selectedTab]
+    var currentStep : SingleStep? {
+        let steps = process.sortedSteps
+        guard !steps.isEmpty else { return nil }
+        return steps[clampedSelectedTab(for: steps)]
     }
 
     var process : DevProcess
     var body: some View {
         TabView(selection: $selectedTab){
-            ForEach(process.sortedSteps) { step in
+            ForEach(Array(process.sortedSteps.enumerated()), id: \.element.id) { offset, step in
                 VStack {
                     VStack {
                         OrientationAdaptiveStack {
@@ -117,7 +119,7 @@ struct DevelopView: View {
                     }
                 }
                 
-                .tag(step.index)
+                .tag(offset)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar(.hidden, for: .tabBar)
@@ -129,7 +131,7 @@ struct DevelopView: View {
         .onChange(of: selectedTab) {
             loadPage()
         }
-        .onChange(of: currentStep.totalDuration) { oldValue, newValue in
+        .onChange(of: currentStep?.totalDuration) { oldValue, newValue in
             guard let newTotal = newValue else { return }
             // Continue elapsed progress if possible
             if let oldTotal = oldValue, let remaining = timeRemaining {
@@ -141,8 +143,12 @@ struct DevelopView: View {
         }
         .sheet(isPresented: $displayTempTimeOptions) {
             NavigationStack {
-                TempSelectionSheet(step: currentStep)
-                    .presentationDetents([.medium, .large])
+                if let currentStep {
+                    TempSelectionSheet(step: currentStep)
+                        .presentationDetents([.medium, .large])
+                } else {
+                    ContentUnavailableView("No steps", systemImage: "list.bullet")
+                }
             }
         }
         
@@ -151,31 +157,35 @@ struct DevelopView: View {
             UIApplication.shared.isIdleTimerDisabled = true
         }
         .onDisappear {
+            timer?.invalidate()
+            timer = nil
             UIApplication.shared.isIdleTimerDisabled = false
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         
         .safeAreaInset(edge: .bottom) {
-            let step = process.sortedSteps[selectedTab]
+            let steps = process.sortedSteps
+            if !steps.isEmpty {
+                let selectedIndex = clampedSelectedTab(for: steps)
+                let step = steps[selectedIndex]
                 HStack {
                     Button {
                         withAnimation {
-                            if step.index == 0 {
+                            if selectedIndex == 0 {
                                 dismiss()
                             }
                             else {
-                                selectedTab -= 1
+                                selectedTab = selectedIndex - 1
                             }
                         }
                     } label: {
-                        Image(systemName: step.index == 0 ? "xmark.circle.fill" : "arrow.left.circle.fill")
+                        Image(systemName: selectedIndex == 0 ? "xmark.circle.fill" : "arrow.left.circle.fill")
                             .symbolRenderingMode(.hierarchical)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 75, height: 75)
-                            .contentTransition(.symbolEffect(.replace))
                     }
-                    .accessibilityLabel(step.index == 0 ? "end" : "previous" )
+                    .accessibilityLabel(selectedIndex == 0 ? "end" : "previous" )
                     
                     Spacer()
                     
@@ -190,7 +200,6 @@ struct DevelopView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 75, height: 75)
-                                .contentTransition(.symbolEffect(.replace))
                         }
                         .animation(.easeInOut, value: isPaused)
                         .accessibilityLabel("restart")
@@ -211,7 +220,6 @@ struct DevelopView: View {
                                 .resizable()
                                 .scaledToFit()
                                 .frame(width: 75, height: 75)
-                                .contentTransition(.symbolEffect(.replace))
                         }
                         .accessibilityLabel(isPaused ? "play" : "pause")
                     }
@@ -221,31 +229,49 @@ struct DevelopView: View {
                     
                     Button {
                         withAnimation {
-                            if selectedTab == process.sortedSteps.count - 1 {
+                            if selectedIndex == steps.count - 1 {
                                 dismiss()
                             }
                             else {
-                                selectedTab += 1
+                                selectedTab = selectedIndex + 1
                             }
                         }
                     } label: {
-                        Image(systemName: selectedTab == process.sortedSteps.count - 1 ? "xmark.circle.fill" : "arrow.right.circle.fill")
+                        Image(systemName: selectedIndex == steps.count - 1 ? "xmark.circle.fill" : "arrow.right.circle.fill")
                             .symbolRenderingMode(.hierarchical)
                             .resizable()
                             .scaledToFit()
                             .frame(width: 75, height: 75)
                     }
-                    .accessibilityLabel(selectedTab == process.sortedSteps.count - 1 ? "end" : "next")
+                    .accessibilityLabel(selectedIndex == steps.count - 1 ? "end" : "next")
                 }
                 .padding()
             }
-            
         }
+	            
+        }
+	    
+    private func clampedSelectedTab(for steps: [SingleStep]) -> Int {
+        guard !steps.isEmpty else { return 0 }
+        return min(max(selectedTab, 0), steps.count - 1)
+    }
     
     func loadPage(unpause: Bool = true) {
         timer?.invalidate()
         isPaused = !unpause
-        let newStep = process.sortedSteps[selectedTab]
+        let steps = process.sortedSteps
+        guard !steps.isEmpty else {
+            timeRemaining = nil
+            subprocessTimeRemaining = nil
+            subprocessBufferRemaining = nil
+            timer = nil
+            return
+        }
+        let selectedIndex = clampedSelectedTab(for: steps)
+        if selectedTab != selectedIndex {
+            selectedTab = selectedIndex
+        }
+        let newStep = steps[selectedIndex]
         
         timeRemaining = newStep.totalDuration
         subprocessTimeRemaining = newStep.substep?.duration
@@ -262,6 +288,10 @@ struct DevelopView: View {
     func generateNewTimer(newStep: SingleStep) {
         timer?.invalidate()
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
+            guard currentStep?.id == newStep.id else {
+                timer.invalidate()
+                return
+            }
             withAnimation {
                 timerAction(newStep: newStep)
             }
@@ -272,12 +302,14 @@ struct DevelopView: View {
                 timeRemaining! -= 1
                 if timeRemaining! <= 0 && newStep.autoAdvance{
                     withAnimation {
-                        if selectedTab < process.sortedSteps.count - 1 {
-                            selectedTab += 1
+                        let steps = process.sortedSteps
+                        let selectedIndex = clampedSelectedTab(for: steps)
+                        if selectedIndex < steps.count - 1 {
+                            selectedTab = selectedIndex + 1
                         }
-                        // auto advance on last step, pause
                         else {
                             timer?.invalidate()
+                            self.timer = nil
                             withAnimation {
                                 isPaused = true
                             }
@@ -285,12 +317,14 @@ struct DevelopView: View {
                     }
                 }
             }
+            guard let substep = newStep.substep else { return }
+
             if subprocessTimeRemaining != nil && subprocessBufferRemaining != nil && subprocessBufferRemaining! <= 0{
                 if subprocessTimeRemaining! > 0 {
                     subprocessTimeRemaining! -= 1
                 }
                 if subprocessTimeRemaining! <= 0 {
-                    subprocessBufferRemaining! = newStep.substep!.gap
+                    subprocessBufferRemaining! = substep.gap
                 }
             }
             else if subprocessBufferRemaining != nil {
@@ -298,7 +332,7 @@ struct DevelopView: View {
                     subprocessBufferRemaining! -= 1
                 }
                 if subprocessBufferRemaining! <= 0 {
-                    subprocessTimeRemaining! = newStep.substep!.duration
+                    subprocessTimeRemaining! = substep.duration
                 }
             }
         }
@@ -385,4 +419,3 @@ extension TimeInterval {
     )
     DevelopView(process: ilfordBW)
 }
-

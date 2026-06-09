@@ -9,6 +9,11 @@
 			<key>orderHint</key>
 			<integer>0</integer>
 		</dict>
+		<key>LabAssistantScreenshots.xcscheme_^#shared#^_</key>
+		<dict>
+			<key>orderHint</key>
+			<integer>3</integer>
+		</dict>
 		<key>LabAssistantTests.xcscheme_^#shared#^_</key>
 		<dict>
 			<key>orderHint</key>
@@ -23,6 +28,11 @@
 	<key>SuppressBuildableAutocreation</key>
 	<dict>
 		<key>56830FB32E89BDC40084D321</key>
+		<dict>
+			<key>primary</key>
+			<true/>
+		</dict>
+		<key>56C2CE792FD85BAB0001038E</key>
 		<dict>
 			<key>primary</key>
 			<true/>
