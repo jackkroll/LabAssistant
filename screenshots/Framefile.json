@@ -1,0 +1,33 @@
+{
+  "default": {
+   	"keyword": {
+			"font":"./fonts/SFPro.otf",
+    		"color": "#FFFFFF"
+			
+    },
+    "title": {
+		"font":"./fonts/SFPro.otf",
+      "color": "#FFFFFF"
+    },
+    "background": "./background.jpg",
+    "padding": 50,
+	 "stack_title": true,
+	 "title_below_image": false,
+    "show_complete_frame": false
+  },
+  "data": [
+    {
+      "filter": "01-workflow",
+		"font_size": 128
+    },
+    {
+      "filter": "02-chemicals"
+    },
+    {
+      "filter": "03-list"
+    },
+    {
+      "filter": "03-edit"
+    }
+  ]
+}

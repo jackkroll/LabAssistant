@@ -67,7 +67,7 @@ enum LabAssistantLaunchConfiguration {
             expiryDate: Calendar.current.date(byAdding: .month, value: 6, to: .now),
             max: 500,
             current: 250,
-            notes: "Example developer",
+            notes: "",
             tags: [concentrate],
             units: .ml
         )
@@ -98,17 +98,17 @@ enum LabAssistantLaunchConfiguration {
             SingleStep(
                 title: "Prepare Chemicals",
                 index: 0,
-                notes: "Set up the tank and measuring cylinders.",
+                notes: "Set up the tank and organize chemicals",
                 autoAdvance: true,
-                associatedChemicals: [ddx],
+                associatedChemicals: [ddx, water],
                 totalDuration: 120
             ),
             SingleStep(
                 title: "Develop",
                 index: 1,
-                notes: "Use the sample developer timing.",
+                notes: "@ 20ºC",
                 autoAdvance: false,
-                associatedChemicals: [ddx],
+                associatedChemicals: [],
                 totalDuration: 540,
                 substep: agitation
             ),
