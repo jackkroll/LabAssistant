@@ -19,20 +19,24 @@ struct UpsellView: View {
     @State private var isPurchasing = false
     @State private var isPurchased = false
     @State private var errorMessage: String?
+    @State private var updatesTask: Task<Void, Never>?
     
     var body: some View {
         NavigationStack {
-                ScrollView {
-                    header
-                    features
-                    Spacer()
-                        .frame(maxWidth: 200)
-                    purchaseSection
-                    purchaseSupportActions
+            ScrollView {
+                header
+                features
             }
-                .padding()
+            .scrollIndicators(.hidden)
             .navigationTitle("Unlock Pro")
             .toolbarTitleDisplayMode(.inlineLarge)
+            .safeAreaInset(edge: .bottom) {
+                VStack {
+                    purchaseSection
+                    purchaseSupportActions
+                }
+                .frame(maxHeight: 150)
+            }
             .toolbar {
                 Button(role: .cancel) {
                     dismiss()
@@ -40,6 +44,28 @@ struct UpsellView: View {
             }
             .task {
                 await refreshStoreState()
+                // Start listening for transaction updates to avoid missing successful purchases
+                updatesTask = Task {
+                    for await update in Transaction.updates {
+                        do {
+                            let transaction = try checkVerified(update)
+                            await transaction.finish()
+                            // Update purchase state when we receive a verified transaction
+                            isPurchased = await hasPurchasedPro()
+                            if isPurchased {
+                                dismiss()
+                            }
+                        } catch {
+                            // Swallow verification errors but surface to the user if appropriate
+                            await MainActor.run {
+                                errorMessage = error.localizedDescription
+                            }
+                        }
+                    }
+                }
+            }
+            .onDisappear {
+                updatesTask?.cancel()
             }
             .alert("StoreKit Error", isPresented: Binding(
                 get: { errorMessage != nil },
@@ -50,6 +76,7 @@ struct UpsellView: View {
                 Text(errorMessage ?? "")
             }
         }
+        .padding()
     }
     
     private var header: some View {

@@ -72,6 +72,45 @@ final class LabAssistantTests: XCTestCase {
         XCTAssertEqual(decoded.tempDuration?.first?.units, .celsius)
     }
 
+    func testAutoTimeBasicUsesStandardKWithOnePreset() {
+        let step = SingleStep(
+            title: "Develop",
+            index: 0,
+            autoAdvance: true,
+            associatedChemicals: [],
+            requestedTemperature: 21,
+            requestedTemperatureUnits: .celsius,
+            tempDuration: [
+                TemperatureDuration(temperature: 20, units: .celsius, duration: 600)
+            ]
+        )
+
+        let estimate = step.timeEstimate(at: Measurement(value: 21, unit: UnitTemperature.celsius))
+
+        XCTAssertEqual(step.autoTimeCalculationMode, .basic)
+        if let est = estimate {
+            XCTAssertEqual(est.estimatedK, 0.08, accuracy: 0.0001)
+            XCTAssertEqual(est.duration, 600 * exp(-0.08), accuracy: 0.001)
+        }
+    }
+
+    func testAutoTimeEnhancedUsesPresetRange() {
+        let step = SingleStep(
+            title: "Develop",
+            index: 0,
+            autoAdvance: true,
+            associatedChemicals: [],
+            requestedTemperature: 21,
+            requestedTemperatureUnits: .celsius,
+            tempDuration: [
+                TemperatureDuration(temperature: 20, units: .celsius, duration: 600),
+                TemperatureDuration(temperature: 24, units: .celsius, duration: 420)
+            ]
+        )
+
+        XCTAssertEqual(step.autoTimeCalculationMode, .enhanced)
+    }
+
     func testTagsCompareByTitleOnly() {
         let left = Tag(title: "Acid", storedColor: "FF0000")
         let right = Tag(title: "Acid", storedColor: "00FF00")

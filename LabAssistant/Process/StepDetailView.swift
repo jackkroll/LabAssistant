@@ -44,6 +44,12 @@ struct StepDetailView: View {
                                 }
                             }
                         }
+                        .onChange(of: selectedMinutes * 60 + selectedSeconds) {
+                            if !step.usesAutoTimeTiming {
+                                let duration = TimeInterval(selectedMinutes*60 + selectedSeconds)
+                                step.totalDuration = duration
+                            }
+                        }
                         .overlay {
                             if step.usesAutoTimeTiming {
                                 Color.secondary.opacity(0.1)
@@ -53,6 +59,27 @@ struct StepDetailView: View {
                         }
                         .pickerStyle(.wheel)
                         .disabled(step.usesAutoTimeTiming)
+                        HStack {
+                            if let duration = step.totalDuration, duration < 5*60 {
+                                Text("Low Development Time")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(.orange.opacity(0.18))
+                                    .foregroundStyle(.orange)
+                                    .clipShape(Capsule())
+                                    
+                            }
+                            if let temp = step.requestedTemperatureMeasurement, temp.converted(to: .celsius).value > 25 {
+                                Text("High Temperature")
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(.orange.opacity(0.18))
+                                    .foregroundStyle(.orange)
+                                    .clipShape(Capsule())
+                            }
+                        }
                 }
                 Toggle("Has Timing", isOn: $hasTiming)
                     .onChange(of: hasTiming) { _, new in
@@ -86,17 +113,28 @@ struct StepDetailView: View {
             Section("Auto Time") {
                 if let requestedTemperature = step.requestedTemperatureMeasurement {
                     let developerBehavior = step.developerBehavior()
-                    let hasEnoughPresets = step.temperatureEstimatePresetCount >= 2
-                    let hasPresetRange = step.hasTemperatureEstimatePresetRange
+                    let hasBasicPreset = step.temperatureEstimatePresetCount >= 1
+                    let hasEnhancedPresets = step.temperatureEstimatePresetCount >= 2
+                    let hasEnhancedPresetRange = step.hasTemperatureEstimatePresetRange
                     let temperatureInRange = SingleStep.isTemperatureInEstimateRange(requestedTemperature)
                     let estimatedDuration = step.autoTimeDuration
+                    let calculationMode = step.autoTimeCalculationMode
                     let isAutoTimeSelected = step.usesAutoTimeTiming
 
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
                             Label("Auto Time", systemImage: "bolt.badge.clock.fill")
                                 .fontWeight(.semibold)
-                            Spacer(minLength: 0)
+                            if let calculationMode {
+                                Text(calculationMode.title)
+                                    .font(.caption.weight(.semibold))
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 6)
+                                    .background(calculationMode.tint.opacity(0.18))
+                                    .foregroundStyle(calculationMode.tint)
+                                    .clipShape(Capsule())
+                            }
+                            Spacer()
                             Text("@")
                             Text("\(requestedTemperature.value.formatted())\(requestedTemperature.unit.symbol)")
                         }
@@ -159,19 +197,34 @@ struct StepDetailView: View {
                         }
 
                         DisclosureGroup {
-                            Text("This value is calculated from your presets and the requested temperature.")
+                            switch calculationMode {
+                            case .basic:
+                                Text("Basic Auto Time uses a single preset and the standard temperature response value of 0.08.")
+                            case .enhanced:
+                                Text("Enhanced Auto Time calculates the temperature response from your presets and the requested temperature.")
+                            case .none:
+                                Text("Add a valid temperature/time preset to calculate Auto Time.")
+                            }
                         } label: {
                             HStack {
                                 Text("Temperature Response")
                                     .foregroundStyle(.secondary)
                                 Spacer()
-                                if hasEnoughPresets {
+                                if calculationMode == .enhanced {
                                     Label(developerBehavior.title, systemImage: developerBehavior.systemImage)
                                         .font(.caption.weight(.semibold))
                                         .padding(.horizontal, 10)
                                         .padding(.vertical, 6)
                                         .background(developerBehavior.tint.opacity(0.18))
                                         .foregroundStyle(developerBehavior.tint)
+                                        .clipShape(Capsule())
+                                } else if let calculationMode {
+                                    Text("Using B&W Standard")
+                                        .font(.caption.weight(.semibold))
+                                        .padding(.horizontal, 10)
+                                        .padding(.vertical, 6)
+                                        .background(calculationMode.tint.opacity(0.18))
+                                        .foregroundStyle(calculationMode.tint)
                                         .clipShape(Capsule())
                                 }
 
@@ -181,16 +234,16 @@ struct StepDetailView: View {
                         DisclosureGroup(isExpanded: $showAutoTimeRequirements) {
                             VStack(alignment: .leading, spacing: 10) {
                                 HStack {
-                                    Text("At least 2 presets with temperature/time pairs")
+                                    Text("At least 1 preset with a temperature/time pair")
                                     Spacer()
-                                    Image(systemName: hasEnoughPresets ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(hasEnoughPresets ? .green : .secondary)
+                                    Image(systemName: hasBasicPreset ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(hasBasicPreset ? .green : .secondary)
                                 }
                                 HStack {
-                                    Text("Preset temperatures span at least 2ºC")
+                                    Text("Enhanced: 2 presets spanning at least 2ºC")
                                     Spacer()
-                                    Image(systemName: hasPresetRange ? "checkmark.circle.fill" : "circle")
-                                        .foregroundStyle(hasPresetRange ? .green : .secondary)
+                                    Image(systemName: hasEnhancedPresets && hasEnhancedPresetRange ? "checkmark.circle.fill" : "circle")
+                                        .foregroundStyle(hasEnhancedPresets && hasEnhancedPresetRange ? .green : .secondary)
                                 }
                                 HStack {
                                     Text("Temperature stays between 16ºC and 36ºC")
@@ -561,7 +614,7 @@ private struct TempDurationEditorView: View {
                         tempDuration.units = units
                         tempDuration.duration = TimeInterval((selectedMinutes * 60) + selectedSeconds)
                     }
-                    _ = step.refreshAutoTimeDurationIfNeeded(excluding: inputTempDuration)
+                    _ = step.refreshAutoTimeDurationIfNeeded()
                     dismiss()
                 }
                 .disabled(!editsMade && inputTempDuration != nil)

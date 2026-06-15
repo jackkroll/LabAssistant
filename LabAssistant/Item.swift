@@ -430,22 +430,76 @@ final class SingleStep: Identifiable, Codable {
         return celsius >= 16 && celsius <= 36
     }
 
+    enum AutoTimeCalculationMode: Equatable {
+        case basic, enhanced
+
+        var title: String {
+            switch self {
+            case .basic:
+                return "Basic"
+            case .enhanced:
+                return "Enhanced"
+            }
+        }
+
+        var systemImage: String {
+            switch self {
+            case .basic:
+                return "bolt.badge.clock"
+            case .enhanced:
+                return "bolt.badge.clock.fill"
+            }
+        }
+
+        var tint: Color {
+            switch self {
+            case .basic:
+                return .blue
+            case .enhanced:
+                return .green
+            }
+        }
+    }
+
+    private static let standardAutoTimeK = 0.08
+
+    var autoTimeCalculationMode: AutoTimeCalculationMode? {
+        guard let temperature = requestedTemperatureMeasurement else { return nil }
+        return autoTimeCalculationMode(at: temperature)
+    }
+
+    func autoTimeCalculationMode(at temperature: Measurement<UnitTemperature>, excluding excludedPreset: TemperatureDuration? = nil) -> AutoTimeCalculationMode? {
+        guard Self.isTemperatureInEstimateRange(temperature) else { return nil }
+
+        let presetCount = temperatureEstimatePresetCountExcluding(excludedPreset)
+        if presetCount == 1 {
+            return .basic
+        }
+
+        if presetCount >= 2 && hasTemperatureEstimatePresetRangeExcluding(excludedPreset) {
+            return .enhanced
+        }
+
+        return nil
+    }
+
     func canEstimateTime(at temperature: Measurement<UnitTemperature>, excluding excludedPreset: TemperatureDuration? = nil) -> Bool {
-        temperatureEstimatePresetCountExcluding(excludedPreset) >= 2
-        && hasTemperatureEstimatePresetRangeExcluding(excludedPreset)
-        && Self.isTemperatureInEstimateRange(temperature)
+        autoTimeCalculationMode(at: temperature, excluding: excludedPreset) != nil
     }
     
     func timeEstimate(at inTemp: Measurement<UnitTemperature>, excluding excludedPreset: TemperatureDuration? = nil) -> (duration: TimeInterval, estimatedK: Double)? {
-        guard canEstimateTime(at: inTemp, excluding: excludedPreset) else { return nil }
-
         let points: [(Double, Double)] = temperatureEstimatePoints(excluding: excludedPreset)
             .map { ($0.temperature, $0.duration) }
             .sorted { $0.0 < $1.0 }
 
-        guard points.count >= 2 else { return nil }
+        guard let mode = autoTimeCalculationMode(at: inTemp, excluding: excludedPreset) else { return nil }
 
         let target = inTemp.converted(to: .celsius).value
+
+        if mode == .basic {
+            guard let point = points.first else { return nil }
+            return (point.1 * exp(Self.standardAutoTimeK * (point.0 - target)), Self.standardAutoTimeK)
+        }
 
         let candidatePairs = zip(points, points.dropFirst())
             .filter { a, b in

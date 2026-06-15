@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import CloudKitSyncMonitor
+import StoreKit
 
 struct ProcessView: View {
     @Environment(\.modelContext) private var modelContext
@@ -16,6 +17,7 @@ struct ProcessView: View {
     
     @State var displayCloudStatusDetailSheet : Bool = false
     @State var addProcessSheet: Bool = false
+    @State private var hasPro: Bool = false
     var body: some View {
         NavigationStack {
             VStack {
@@ -80,12 +82,12 @@ struct ProcessView: View {
                                     }
                                 }
                             }
+                            .padding(.horizontal)
                         }
                         Spacer()
                     }
                 }
                 }
-                    .padding()
                     .toolbar {
                         ToolbarItem {
                             Image(systemName: syncMonitor.syncStateSummary.symbolName)
@@ -106,12 +108,44 @@ struct ProcessView: View {
                         DevelopView(process: process)
                     }
             }
+        
             
             .sheet(isPresented: $addProcessSheet) {
-                AddProcessSheet()
+                if processes.count >= 2 && !hasPro {
+                    UpsellView()
+                } else {
+                    AddProcessSheet()
+                }
+            }
+            .onChange(of: addProcessSheet) { _, newValue in
+                if newValue {
+                    Task { @MainActor in
+                        self.hasPro = await hasPurchasedPro()
+                    }
+                }
+            }
+            .task {
+                self.hasPro = await hasPurchasedPro()
             }
 
-        
+    }
+    
+    func hasPurchasedPro() async -> Bool {
+        for await result in Transaction.currentEntitlements {
+            switch result {
+            case .verified(let transaction):
+                let productId = transaction.productID
+                if productId == "pro" {
+                    if transaction.revocationDate != nil {
+                        return false
+                    }
+                    return true
+                }
+            case .unverified(_, _):
+                continue
+            }
+        }
+        return false
     }
 }
 

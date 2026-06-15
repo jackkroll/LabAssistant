@@ -8,6 +8,14 @@
 import SwiftUI
 import Combine
 
+private struct PresetsSheetContext: Identifiable {
+    let step: SingleStep
+
+    var id: UUID {
+        step.id
+    }
+}
+
 struct DevelopView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.dismiss) var dismiss
@@ -21,7 +29,9 @@ struct DevelopView: View {
     @State var timer : Timer? = nil
     
     @State var isPaused : Bool = false
-    @State var displayTempTimeOptions : Bool = false
+    @State private var presetsSheetContext: PresetsSheetContext? = nil
+    @State private var lastTabForDurationChange: Int = -1
+    
     var currentStep : SingleStep? {
         let steps = process.sortedSteps
         guard !steps.isEmpty else { return nil }
@@ -31,6 +41,11 @@ struct DevelopView: View {
     var process : DevProcess
     var body: some View {
         TabView(selection: $selectedTab){
+            if process.steps?.isEmpty ?? true {
+                    VStack {
+                        ContentUnavailableView("No Steps Added", systemImage: "list.clipboard")
+                    }
+            }
             ForEach(Array(process.sortedSteps.enumerated()), id: \.element.id) { offset, step in
                 VStack {
                     VStack {
@@ -38,15 +53,8 @@ struct DevelopView: View {
                             Text(step.title)
                                 .fontWeight(.bold)
                                 .font(.largeTitle)
-                            if let presets = step.tempDuration?.count, presets > 0 {
-                                Button("Change Preset") {
-                                    withAnimation {
-                                        displayTempTimeOptions = true
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .controlSize(.large)
-                            }
+                                .minimumScaleFactor(0.5)
+                                .layoutPriority(0.5)
                         }
                         if step.associatedChemicals != nil && step.associatedChemicals!.count > 0 {
                             HStack {
@@ -57,9 +65,11 @@ struct DevelopView: View {
                         }
                         Text(step.notes)
                             .fontWeight(.semibold)
-                            .font(.title2)
+                            .font(.title3)
+                            .minimumScaleFactor(0.5)
                         
                     }
+                    .ignoresSafeArea(.all)
                     
                     if timeRemaining != nil  || subprocessTimeRemaining != nil {
                         OrientationAdaptiveStack {
@@ -67,16 +77,17 @@ struct DevelopView: View {
                                     Text(timeRemaining.formatToMinSec())
                                         .contentTransition(.numericText(countsDown: true))
                                         .font(.system(size: 100, weight: .black, design: .monospaced))
-                                        .minimumScaleFactor(0.01)
+                                        .minimumScaleFactor(0.5)
                                         .padding()
                                         .frame(maxWidth: .infinity)
                                         .foregroundStyle(timeRemaining < 0 ? .red : .primary)
                                         .frame(maxHeight: 150)
                                         .onLongPressGesture {
                                             withAnimation {
-                                                displayTempTimeOptions = true
+                                                presetsSheetContext = PresetsSheetContext(step: step)
                                             }
                                         }
+                                        .layoutPriority(1)
                             }
                            
                             if step.substep != nil && subprocessTimeRemaining != nil && subprocessBufferRemaining != nil {
@@ -88,7 +99,7 @@ struct DevelopView: View {
                                                 .symbolRenderingMode(.multicolor)
                                                 .resizable()
                                                 .scaledToFit()
-                                                .frame(maxWidth: 50)
+                                                .frame(minWidth: 25, maxWidth: 50)
                                             
                                         }
                                         Text(step.substep!.title)
@@ -99,18 +110,22 @@ struct DevelopView: View {
                                                 Text(subprocessTimeRemaining!.formatToMinSec())
                                                     .contentTransition(.numericText(countsDown: true))
                                                     .font(.system(size: 50, weight: .bold, design: .monospaced))
-                                                    .padding()
+                                                    .minimumScaleFactor(0.5)
+                                                    .layoutPriority(1)
                                             }
                                         }
                                         else if subprocessBufferRemaining != nil && subprocessBufferRemaining! > 0 {
                                             Text(subprocessBufferRemaining!.formatToMinSec())
                                                 .contentTransition(.numericText(countsDown: true))
                                                 .font(.system(size: 50, weight: .bold, design: .default))
-                                                .padding()
+                                                .minimumScaleFactor(0.5)
+                                                .layoutPriority(1)
+                                            
                                         }
                                     }
                                     .foregroundStyle(subprocessTimeRemaining! > 0 ? .green : .gray)
-                                    .frame(maxWidth: 500)
+                                    .frame(minWidth: 200, maxWidth: 500)
+                                    .layoutPriority(1)
                                 }
                                 
                             }
@@ -133,25 +148,18 @@ struct DevelopView: View {
         }
         .onChange(of: currentStep?.totalDuration) { oldValue, newValue in
             guard let newTotal = newValue else { return }
-            // Continue elapsed progress if possible
-            if let oldTotal = oldValue, let remaining = timeRemaining {
-                let elapsed = oldTotal - remaining
-                timeRemaining = newTotal - elapsed
+            if lastTabForDurationChange == selectedTab {
+                if let oldTotal = oldValue, let remaining = timeRemaining {
+                    let elapsed = oldTotal - remaining
+                    timeRemaining = newTotal - elapsed
+                } else {
+                    timeRemaining = newTotal
+                }
             } else {
                 timeRemaining = newTotal
             }
+            lastTabForDurationChange = selectedTab
         }
-        .sheet(isPresented: $displayTempTimeOptions) {
-            NavigationStack {
-                if let currentStep {
-                    TempSelectionSheet(step: currentStep)
-                        .presentationDetents([.medium, .large])
-                } else {
-                    ContentUnavailableView("No steps", systemImage: "list.bullet")
-                }
-            }
-        }
-        
     }
         .onAppear {
             UIApplication.shared.isIdleTimerDisabled = true
@@ -162,7 +170,27 @@ struct DevelopView: View {
             UIApplication.shared.isIdleTimerDisabled = false
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
-        
+        .overlay(alignment: .topTrailing) {
+            let steps = process.sortedSteps
+            if !steps.isEmpty {
+                let selectedIndex = clampedSelectedTab(for: steps)
+                let step = steps[selectedIndex]
+                if let presets = step.tempDuration?.count, presets > 0 {
+                    Button {
+                        withAnimation {
+                            presetsSheetContext = PresetsSheetContext(step: step)
+                        }
+                    } label: {
+                        Image(systemName: "list.bullet.circle.fill")
+                            .symbolRenderingMode(.hierarchical)
+                            .resizable()
+                            .scaledToFit()
+                            .frame(width: 75, height: 75)
+                    }
+                    .padding()
+                }
+            }
+        }
         .safeAreaInset(edge: .bottom) {
             let steps = process.sortedSteps
             if !steps.isEmpty {
@@ -245,7 +273,12 @@ struct DevelopView: View {
                     }
                     .accessibilityLabel(selectedIndex == steps.count - 1 ? "end" : "next")
                 }
-                .padding()
+            }
+        }
+        .sheet(item: $presetsSheetContext) { ctx in
+            NavigationStack {
+                TempSelectionSheet(step: ctx.step)
+                    .presentationDetents([.medium, .large])
             }
         }
 	            
@@ -292,10 +325,8 @@ struct DevelopView: View {
                 timer.invalidate()
                 return
             }
-            withAnimation {
-                timerAction(newStep: newStep)
-            }
-    }
+            timerAction(newStep: newStep)
+        }
     
         func timerAction(newStep: SingleStep) {
             if timeRemaining != nil {
@@ -363,7 +394,7 @@ extension TimeInterval {
             autoAdvance: false,
             associatedChemicals: [],
             totalDuration: 5,
-            substep: nil
+            substep: agitation
         ),
         SingleStep(
             title: "Develop",
@@ -416,6 +447,13 @@ extension TimeInterval {
     let ilfordBW = DevProcess(
         nickname: "HP5+ in DD-X",
         steps: steps
+    )
+    DevelopView(process: ilfordBW)
+}
+
+#Preview {
+    let ilfordBW = DevProcess(
+        nickname: "HP5+ in DD-X", steps: []
     )
     DevelopView(process: ilfordBW)
 }
