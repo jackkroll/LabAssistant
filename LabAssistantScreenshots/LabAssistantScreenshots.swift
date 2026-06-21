@@ -7,7 +7,7 @@ final class LabAssistantScreenshots: XCTestCase {
         super.setUp()
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-ui-testing"]
+        app.launchArguments = ["-ui-testing", "-ui-testing-example-data"]
         setupSnapshot(app)
         app.launch()
     }

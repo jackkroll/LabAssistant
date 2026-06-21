@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 import Onboarding
 import Foundation
+import Combine
 
 enum LabAssistantLaunchConfiguration {
     static let uiTestingArgument = "-ui-testing"
@@ -18,9 +19,16 @@ enum LabAssistantLaunchConfiguration {
         ProcessInfo.processInfo.arguments.contains(uiTestingArgument)
     }
 
+    /// UI tests and screenshot runs use in-memory storage without CloudKit; show a healthy sync state in the UI.
+    static var shouldSimulateCloudKitSyncedStatus: Bool {
+        isRunningUITests
+    }
+
     static var shouldSeedExampleData: Bool {
         ProcessInfo.processInfo.arguments.contains(uiTestingExampleDataArgument)
     }
+
+    static let cloudKitContainerIdentifier = "iCloud.icloud.JackKroll.LabAssistant"
 
     static let schema = Schema([
         Chemical.self,
@@ -31,20 +39,39 @@ enum LabAssistantLaunchConfiguration {
         TemperatureDuration.self
     ])
 
-    static func makeModelContainer() -> ModelContainer {
-        let modelConfiguration = ModelConfiguration(
+    static func makeModelConfiguration(isStoredInMemoryOnly: Bool) -> ModelConfiguration {
+        ModelConfiguration(
             schema: schema,
-            isStoredInMemoryOnly: isRunningUITests
+            isStoredInMemoryOnly: isStoredInMemoryOnly,
+            cloudKitDatabase: isStoredInMemoryOnly ? .none : .automatic
         )
+    }
 
-        do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
-            if shouldSeedExampleData {
-                seedExampleData(in: container.mainContext)
-            }
-            return container
-        } catch {
-            fatalError("Could not create ModelContainer: \(error)")
+    static func makeModelContainer() throws -> ModelContainer {
+        let modelConfiguration = makeModelConfiguration(isStoredInMemoryOnly: isRunningUITests)
+
+        let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+        if shouldSeedExampleData {
+            seedExampleData(in: container.mainContext)
+        }
+        return container
+    }
+
+    static func resetPersistentStore() throws {
+        guard !isRunningUITests else { return }
+
+        let modelConfiguration = makeModelConfiguration(isStoredInMemoryOnly: false)
+        let storeURL = modelConfiguration.url
+
+        let fileManager = FileManager.default
+        let relatedPaths = [
+            storeURL.path,
+            storeURL.path + "-shm",
+            storeURL.path + "-wal"
+        ]
+
+        for path in relatedPaths where fileManager.fileExists(atPath: path) {
+            try fileManager.removeItem(atPath: path)
         }
     }
 
@@ -140,25 +167,120 @@ enum LabAssistantLaunchConfiguration {
     }
 }
 
+@MainActor
+final class ModelStore: ObservableObject {
+    @Published private(set) var container: ModelContainer?
+    @Published private(set) var loadError: Error?
+    @Published private(set) var isResetting = false
+
+    init() {
+        loadContainer(resetStore: false)
+    }
+
+    func loadContainer(resetStore: Bool) {
+        isResetting = resetStore
+
+        do {
+            if resetStore {
+                try LabAssistantLaunchConfiguration.resetPersistentStore()
+            }
+            container = try LabAssistantLaunchConfiguration.makeModelContainer()
+            loadError = nil
+        } catch {
+            container = nil
+            loadError = error
+        }
+
+        isResetting = false
+    }
+}
+
+struct ModelContainerErrorView: View {
+    let error: Error
+    let onRetry: () -> Void
+    let onReset: () -> Void
+
+    var body: some View {
+        VStack(spacing: 20) {
+            Image(systemName: "externaldrive.badge.exclamationmark")
+                .font(.system(size: 52))
+                .symbolRenderingMode(.hierarchical)
+                .foregroundStyle(.red)
+
+            Text("Couldn't Open Your Data")
+                .font(.title2)
+                .fontWeight(.semibold)
+                .multilineTextAlignment(.center)
+
+            Text("Lab Assistant couldn't load its local database. Your data is still on this device, but the app needs a fresh local store to continue.")
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
+            Text(error.localizedDescription)
+                .font(.footnote)
+                .foregroundStyle(.tertiary)
+                .multilineTextAlignment(.center)
+
+            Button("Try Again", action: onRetry)
+                .buttonStyle(.borderedProminent)
+                .buttonSizing(.flexible)
+
+            Button("Reset Local Data", role: .destructive, action: onReset)
+                .buttonSizing(.flexible)
+
+            Text("Resetting removes workflows and chemicals stored on this device. iCloud copies may download again after you sign back in.")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .padding(24)
+    }
+}
+
 @main
 struct LabAssistantApp: App {
-    var sharedModelContainer: ModelContainer = LabAssistantLaunchConfiguration.makeModelContainer()
-    
+    @StateObject private var modelStore = ModelStore()
+    @StateObject private var purchaseManager = PurchaseManager()
+
+    @ViewBuilder
+    private var rootContent: some View {
+        if LabAssistantLaunchConfiguration.isRunningUITests {
+            HomeScreenView()
+        } else {
+            HomeScreenView()
+                .showOnboardingIfNeeded(
+                    config: .production,
+                    appIcon: Image("AppIcon")
+                )
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
             Group {
-                if LabAssistantLaunchConfiguration.isRunningUITests {
-                    HomeScreenView()
+                if let container = modelStore.container {
+                    rootContent
+                        .modelContainer(container)
+                } else if let error = modelStore.loadError {
+                    ModelContainerErrorView(
+                        error: error,
+                        onRetry: { modelStore.loadContainer(resetStore: false) },
+                        onReset: { modelStore.loadContainer(resetStore: true) }
+                    )
+                    .overlay {
+                        if modelStore.isResetting {
+                            ProgressView("Resetting local data…")
+                                .padding()
+                                .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        }
+                    }
                 } else {
-                    HomeScreenView()
-                        .showOnboardingIfNeeded(
-                            config: .production,
-                            appIcon: Image("AppIcon")
-                        )
+                    ProgressView("Loading…")
                 }
             }
+            .environmentObject(purchaseManager)
         }
-        .modelContainer(sharedModelContainer)
     }
 }
 

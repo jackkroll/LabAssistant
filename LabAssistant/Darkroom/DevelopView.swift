@@ -56,9 +56,9 @@ struct DevelopView: View {
                                 .minimumScaleFactor(0.5)
                                 .layoutPriority(0.5)
                         }
-                        if step.associatedChemicals != nil && step.associatedChemicals!.count > 0 {
+            if step.associatedChemicals?.isEmpty == false {
                             HStack {
-                                ForEach(step.associatedChemicals!) { chemical in
+                                ForEach(step.associatedChemicals ?? []) { chemical in
                                     TagRender(tag: Tag(title: chemical.nickname))
                                 }
                             }
@@ -90,11 +90,12 @@ struct DevelopView: View {
                                         .layoutPriority(1)
                             }
                            
-                            if step.substep != nil && subprocessTimeRemaining != nil && subprocessBufferRemaining != nil {
-                                //Spacer()
+                            if let substep = step.substep,
+                               let subprocessTime = subprocessTimeRemaining,
+                               let subprocessBuffer = subprocessBufferRemaining {
                                 GroupBox{
                                     VStack {
-                                        if subprocessTimeRemaining! > 0 {
+                                        if subprocessTime > 0 {
                                             Image(systemName: "stopwatch.fill")
                                                 .symbolRenderingMode(.multicolor)
                                                 .resizable()
@@ -102,20 +103,20 @@ struct DevelopView: View {
                                                 .frame(minWidth: 25, maxWidth: 50)
                                             
                                         }
-                                        Text(step.substep!.title)
+                                        Text(substep.title)
                                             .font(.title2)
                                             .fontWeight(.semibold)
-                                        if subprocessTimeRemaining != nil && subprocessTimeRemaining! > 0 {
+                                        if subprocessTime > 0 {
                                             HStack {
-                                                Text(subprocessTimeRemaining!.formatToMinSec())
+                                                Text(subprocessTime.formatToMinSec())
                                                     .contentTransition(.numericText(countsDown: true))
                                                     .font(.system(size: 50, weight: .bold, design: .monospaced))
                                                     .minimumScaleFactor(0.5)
                                                     .layoutPriority(1)
                                             }
                                         }
-                                        else if subprocessBufferRemaining != nil && subprocessBufferRemaining! > 0 {
-                                            Text(subprocessBufferRemaining!.formatToMinSec())
+                                        else if subprocessBuffer > 0 {
+                                            Text(subprocessBuffer.formatToMinSec())
                                                 .contentTransition(.numericText(countsDown: true))
                                                 .font(.system(size: 50, weight: .bold, design: .default))
                                                 .minimumScaleFactor(0.5)
@@ -123,7 +124,7 @@ struct DevelopView: View {
                                             
                                         }
                                     }
-                                    .foregroundStyle(subprocessTimeRemaining! > 0 ? .green : .gray)
+                                    .foregroundStyle(subprocessTime > 0 ? .green : .gray)
                                     .frame(minWidth: 200, maxWidth: 500)
                                     .layoutPriority(1)
                                 }
@@ -320,54 +321,67 @@ struct DevelopView: View {
     
     func generateNewTimer(newStep: SingleStep) {
         timer?.invalidate()
-        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { timer in
-            guard currentStep?.id == newStep.id else {
-                timer.invalidate()
+        let stepID = newStep.id
+        let newTimer = Timer(timeInterval: 1.0, repeats: true) { _ in
+            guard currentStep?.id == stepID else {
+                timer?.invalidate()
+                timer = nil
                 return
             }
-            timerAction(newStep: newStep)
+            performTimerTick()
         }
-    
-        func timerAction(newStep: SingleStep) {
-            if timeRemaining != nil {
-                timeRemaining! -= 1
-                if timeRemaining! <= 0 && newStep.autoAdvance{
-                    withAnimation {
-                        let steps = process.sortedSteps
-                        let selectedIndex = clampedSelectedTab(for: steps)
-                        if selectedIndex < steps.count - 1 {
-                            selectedTab = selectedIndex + 1
-                        }
-                        else {
-                            timer?.invalidate()
-                            self.timer = nil
-                            withAnimation {
-                                isPaused = true
-                            }
+        RunLoop.main.add(newTimer, forMode: .common)
+        timer = newTimer
+    }
+
+    private func performTimerTick() {
+        guard let newStep = currentStep else {
+            timer?.invalidate()
+            timer = nil
+            return
+        }
+
+        if var remaining = timeRemaining {
+            remaining -= 1
+            timeRemaining = remaining
+            if remaining <= 0 && newStep.autoAdvance {
+                withAnimation {
+                    let steps = process.sortedSteps
+                    let selectedIndex = clampedSelectedTab(for: steps)
+                    if selectedIndex < steps.count - 1 {
+                        selectedTab = selectedIndex + 1
+                    } else {
+                        timer?.invalidate()
+                        timer = nil
+                        withAnimation {
+                            isPaused = true
                         }
                     }
                 }
             }
-            guard let substep = newStep.substep else { return }
-
-            if subprocessTimeRemaining != nil && subprocessBufferRemaining != nil && subprocessBufferRemaining! <= 0{
-                if subprocessTimeRemaining! > 0 {
-                    subprocessTimeRemaining! -= 1
-                }
-                if subprocessTimeRemaining! <= 0 {
-                    subprocessBufferRemaining! = substep.gap
-                }
-            }
-            else if subprocessBufferRemaining != nil {
-                if subprocessBufferRemaining! > 0 {
-                    subprocessBufferRemaining! -= 1
-                }
-                if subprocessBufferRemaining! <= 0 {
-                    subprocessTimeRemaining! = substep.duration
-                }
-            }
         }
 
+        guard let substep = newStep.substep else { return }
+
+        if var subprocessTime = subprocessTimeRemaining,
+           let subprocessBuffer = subprocessBufferRemaining,
+           subprocessBuffer <= 0 {
+            if subprocessTime > 0 {
+                subprocessTime -= 1
+                subprocessTimeRemaining = subprocessTime
+            }
+            if subprocessTime <= 0 {
+                subprocessBufferRemaining = substep.gap
+            }
+        } else if var subprocessBuffer = subprocessBufferRemaining {
+            if subprocessBuffer > 0 {
+                subprocessBuffer -= 1
+                subprocessBufferRemaining = subprocessBuffer
+            }
+            if subprocessBuffer <= 0 {
+                subprocessTimeRemaining = substep.duration
+            }
+        }
     }
 }
 

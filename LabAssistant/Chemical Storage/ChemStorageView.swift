@@ -15,6 +15,11 @@ struct ChemicalStorageView: View {
     @Query private var items: [Chemical]
     @State var showAddChemicalSheet : Bool = false
     @State var displayCloudStatusDetailSheet : Bool = false
+
+    private var syncStatus: SyncMonitor.SyncSummaryStatus {
+        CloudKitSyncPresentation.summaryStatus(from: syncMonitor)
+    }
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -47,10 +52,15 @@ struct ChemicalStorageView: View {
             }
             .toolbar {
                 ToolbarItem {
-                    Image(systemName: syncMonitor.syncStateSummary.symbolName)
-                        .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
-                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolColor)
-                        .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolName)
+                    Button {
+                        displayCloudStatusDetailSheet = true
+                    } label: {
+                        Image(systemName: syncStatus.symbolName)
+                            .foregroundColor(syncStatus.symbolColor)
+                    }
+                    .accessibilityLabel("iCloud sync status")
+                    .animation(.easeInOut, value: syncStatus.symbolColor)
+                    .animation(.easeInOut, value: syncStatus.symbolName)
                 }
                 ToolbarSpacer(.flexible)
                 ToolbarItem{
@@ -63,6 +73,9 @@ struct ChemicalStorageView: View {
             }
             .navigationDestination(for: Chemical.self) { chemical in
                 ChemicalDetailView(chemical: chemical)
+            }
+            .sheet(isPresented: $displayCloudStatusDetailSheet) {
+                CloudKitSyncStatusSheet()
             }
         }
     }
@@ -147,15 +160,15 @@ struct ChemCard: View {
                     SmallDate(date: chem.expiryDate!)
                 }
             }
-            if chem.tags != nil {
+            if let tags = chem.tags, !tags.isEmpty {
                 HStack{
-                    ForEach(chem.tags!) { tag in
+                    ForEach(tags) { tag in
                         TagRender(tag: tag)
                     }
                     Spacer()
                 }
             }
-            Gauge(value: chem.current, in: 0...chem.max) {
+            Gauge(value: chem.current, in: chemicalGaugeRange(current: chem.current, maximum: chem.max)) {
                 /*
                 Label {
                     Text("\(chem.current)\(chem.units.rawValue) remaining")

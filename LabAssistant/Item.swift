@@ -135,14 +135,13 @@ final class DevProcess : Equatable {
     }
     
     var estTime: TimeInterval? {
-        var time : TimeInterval? = nil
+        var time: TimeInterval?
         for step in sortedSteps {
-            if step.totalDuration != nil {
-                if time == nil {
-                    time = 0
-                }
-                time! += step.totalDuration!
+            guard let duration = step.totalDuration else { continue }
+            if time == nil {
+                time = 0
             }
+            time? += duration
         }
         return time
     }
@@ -157,6 +156,7 @@ final class DevProcess : Equatable {
         self.init(nickname: nickname, notes: notes, steps: steps ?? [])
     }
 
+    @MainActor
     convenience init?(record: CKRecord) {
         record["isApproved"] = nil
         record["uploadUser"] = nil
@@ -164,38 +164,11 @@ final class DevProcess : Equatable {
         let notes = record["notes"] as? String ?? ""
         
         
-        var builtSteps: [SingleStep] = []
-        let stepData: Data? = record["stepsData"] as? Data
-        if let stepData {
-            do {
-                builtSteps = try JSONDecoder().decode([SingleStep].self, from: stepData)
-            } catch {
-                do {
-                    struct StepDTO: Codable { let title: String; let index: Int; let notes: String?; let autoAdvance: Bool?; let totalDuration: Double?; let substepTitle: String?; let substepDuration: Double?; let substepGap: Double? }
-                    let decoded = try JSONDecoder().decode([StepDTO].self, from: stepData)
-                    builtSteps = decoded.map { dto in
-                        let sub: SubstepProcess? = {
-                            if let st = dto.substepTitle, let d = dto.substepDuration, let g = dto.substepGap {
-                                return SubstepProcess(title: st, duration: d, gap: g)
-                            }
-                            return nil
-                        }()
-                        return SingleStep(
-                            title: dto.title,
-                            index: dto.index,
-                            notes: dto.notes ?? "",
-                            autoAdvance: dto.autoAdvance ?? true,
-                            associatedChemicals: [],
-                            totalDuration: dto.totalDuration,
-                            substep: sub
-                        )
-                    }
-                } catch {
-                    // If steps JSON is malformed, fall back to empty steps
-                    print("malformed")
-                    builtSteps = []
-                }
-            }
+        let builtSteps: [SingleStep]
+        if let stepData = record["stepsData"] as? Data {
+            builtSteps = PresetStepSerialization.decodeSteps(from: stepData)
+        } else {
+            builtSteps = []
         }
 
         self.init(nickname: nickname, notes: notes, steps: builtSteps)
@@ -203,8 +176,65 @@ final class DevProcess : Equatable {
     }
 }
 
+extension DevProcess {
+    func stepPosition(for stepID: UUID) -> Int? {
+        sortedSteps.firstIndex(where: { $0.id == stepID })
+    }
+
+    func moveStep(withID stepID: UUID, by offset: Int) {
+        guard offset != 0 else { return }
+
+        var orderedSteps = sortedSteps
+        guard let position = orderedSteps.firstIndex(where: { $0.id == stepID }) else { return }
+
+        let destination = position + offset
+        guard orderedSteps.indices.contains(destination) else { return }
+
+        orderedSteps.swapAt(position, destination)
+        for (index, step) in orderedSteps.enumerated() {
+            step.index = index
+        }
+        sortedSteps = orderedSteps
+    }
+
+    func removeStep(withID stepID: UUID) {
+        steps?.removeAll(where: { $0.id == stepID })
+        reindexSteps()
+    }
+
+    func reindexSteps() {
+        for (index, step) in sortedSteps.enumerated() {
+            step.index = index
+        }
+    }
+
+    func appendUntitledStep() {
+        if steps == nil {
+            steps = []
+        }
+
+        let newStep = SingleStep(
+            title: "Untitled",
+            index: sortedSteps.count,
+            notes: "",
+            autoAdvance: true,
+            associatedChemicals: [],
+            totalDuration: nil,
+            substep: nil
+        )
+        steps?.append(newStep)
+    }
+}
+
+func chemicalGaugeRange(current: Double, maximum: Double) -> ClosedRange<Double> {
+    let safeCurrent = Swift.max(current, 0)
+    let safeMaximum = Swift.max(maximum, 0)
+    let safeUpper = Swift.max(Swift.max(safeCurrent, safeMaximum), 1)
+    return 0...safeUpper
+}
+
 @Model
-final class SingleStep: Identifiable, Codable {
+final class SingleStep: Identifiable {
     var id : UUID = UUID()
     var index: Int = 0
     var title: String = "Untitled"
@@ -220,50 +250,6 @@ final class SingleStep: Identifiable, Codable {
     @Relationship(deleteRule: .cascade) var substep: SubstepProcess?
     @Relationship(deleteRule: .cascade, inverse: \TemperatureDuration.associatedStep) var tempDuration: [TemperatureDuration]? = nil
 
-    private enum CodingKeys: String, CodingKey {
-        case id, index, title, notes, autoAdvance, totalDuration, requestedTemperature, requestedTemperatureUnitsSymbol, usesAutoTimeTiming, substep, tempDuration
-    }
-
-    required init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.id = try c.decode(UUID.self, forKey: .id)
-        self.index = try c.decode(Int.self, forKey: .index)
-        self.title = try c.decode(String.self, forKey: .title)
-        self.notes = try c.decode(String.self, forKey: .notes)
-        self.autoAdvance = try c.decode(Bool.self, forKey: .autoAdvance)
-        self.associatedChemicals = []
-        self.associatedProcess = nil
-        self.totalDuration = try c.decodeIfPresent(TimeInterval.self, forKey: .totalDuration)
-        self.requestedTemperature = try c.decodeIfPresent(Double.self, forKey: .requestedTemperature)
-        self.usesAutoTimeTiming = try c.decodeIfPresent(Bool.self, forKey: .usesAutoTimeTiming) ?? false
-        let requestedUnitsSymbol = try c.decodeIfPresent(String.self, forKey: .requestedTemperatureUnitsSymbol) ?? UnitTemperature.celsius.symbol
-        switch requestedUnitsSymbol {
-        case UnitTemperature.celsius.symbol,
-             UnitTemperature.fahrenheit.symbol,
-             UnitTemperature.kelvin.symbol:
-            self.requestedTemperatureUnitsSymbolStorage = requestedUnitsSymbol
-        default:
-            self.requestedTemperatureUnitsSymbolStorage = UnitTemperature.celsius.symbol
-        }
-        self.substep = try c.decodeIfPresent(SubstepProcess.self, forKey: .substep)
-        self.tempDuration = try c.decodeIfPresent([TemperatureDuration].self, forKey: .tempDuration)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id, forKey: .id)
-        try c.encode(index, forKey: .index)
-        try c.encode(title, forKey: .title)
-        try c.encode(notes, forKey: .notes)
-        try c.encode(autoAdvance, forKey: .autoAdvance)
-        try c.encodeIfPresent(totalDuration, forKey: .totalDuration)
-        try c.encodeIfPresent(requestedTemperature, forKey: .requestedTemperature)
-        try c.encode(requestedTemperatureUnitsSymbolStorage, forKey: .requestedTemperatureUnitsSymbol)
-        try c.encode(usesAutoTimeTiming, forKey: .usesAutoTimeTiming)
-        try c.encodeIfPresent(substep, forKey: .substep)
-        try c.encodeIfPresent(tempDuration, forKey: .tempDuration)
-    }
-    
     init(title: String, index: Int,notes: String = "", autoAdvance: Bool, associatedChemicals: [Chemical], totalDuration: TimeInterval? = nil, requestedTemperature: Double? = nil, requestedTemperatureUnits: UnitTemperature? = .celsius, usesAutoTimeTiming: Bool = false, substep: SubstepProcess? = nil, tempDuration: [TemperatureDuration]? = nil) {
         self.id = UUID()
         self.title = title
@@ -515,9 +501,19 @@ final class SingleStep: Identifiable, Codable {
             abs((($1.0.0 + $1.1.0) / 2) - target)
         }
 
-        let selected = pair ?? (points.first!, points.last!)
+        let a: (Double, Double)
+        let b: (Double, Double)
+        if let pair {
+            a = pair.0
+            b = pair.1
+        } else if let first = points.first, let last = points.last {
+            a = first
+            b = last
+        } else {
+            return nil
+        }
 
-        let (a, b) = selected
+        guard a.0 != b.0, a.1 > 0, b.1 > 0 else { return nil }
 
         let k = log(b.1 / a.1) / (a.0 - b.0)
         let descriptiveK = Self.descriptiveK(from: points) ?? k
@@ -606,7 +602,7 @@ final class SingleStep: Identifiable, Codable {
 }
 
 @Model
-final class TemperatureDuration: Codable {
+final class TemperatureDuration {
     @Relationship(deleteRule: .nullify) var associatedStep: SingleStep?
     var temperature: Double? = 20
     private var unitsSymbolStorage: String? = UnitTemperature.celsius.symbol
@@ -639,64 +635,24 @@ final class TemperatureDuration: Codable {
         }
     }
 
-    private enum CodingKeys: String, CodingKey { case temperature, unitsSymbol, duration, isAutoTime }
-
     init(temperature: Double?, units: UnitTemperature? = .celsius, duration: TimeInterval) {
         self.temperature = temperature
         self.unitsSymbolStorage = units?.symbol
         self.duration = duration
     }
-
-    required init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.temperature = try c.decodeIfPresent(Double.self, forKey: .temperature)
-        self.duration = try c.decode(TimeInterval.self, forKey: .duration)
-        let symbol = try c.decodeIfPresent(String.self, forKey: .unitsSymbol) ?? UnitTemperature.celsius.symbol
-        switch symbol {
-        case UnitTemperature.celsius.symbol,
-             UnitTemperature.fahrenheit.symbol,
-             UnitTemperature.kelvin.symbol:
-            self.unitsSymbolStorage = symbol
-        default:
-            self.unitsSymbolStorage = UnitTemperature.celsius.symbol
-        }
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(temperature, forKey: .temperature)
-        try c.encode(duration, forKey: .duration)
-        try c.encode(unitsSymbolStorage, forKey: .unitsSymbol)
-    }
 }
 
 @Model
-final class SubstepProcess: Codable {
+final class SubstepProcess {
     @Relationship(deleteRule: .nullify, inverse: \SingleStep.substep) var associatedStep: SingleStep?
     var title: String = "Untitled"
     var duration: TimeInterval = 30
     var gap: TimeInterval = 30
 
-    private enum CodingKeys: String, CodingKey { case title, duration, gap }
-
-    required init(from decoder: Decoder) throws {
-        let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.associatedStep = nil
-        self.title = try c.decode(String.self, forKey: .title)
-        self.duration = try c.decode(TimeInterval.self, forKey: .duration)
-        self.gap = try c.decode(TimeInterval.self, forKey: .gap)
-    }
-
-    func encode(to encoder: Encoder) throws {
-        var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(title, forKey: .title)
-        try c.encode(duration, forKey: .duration)
-        try c.encode(gap, forKey: .gap)
-    }
-    
     init(title: String, duration: TimeInterval, gap: TimeInterval) {
         self.title = title
         self.duration = duration
         self.gap = gap
     }
 }
+

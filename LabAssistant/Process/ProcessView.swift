@@ -8,16 +8,20 @@
 import SwiftUI
 import SwiftData
 import CloudKitSyncMonitor
-import StoreKit
 
 struct ProcessView: View {
     @Environment(\.modelContext) private var modelContext
+    @EnvironmentObject private var purchaseManager: PurchaseManager
     @StateObject private var syncMonitor = SyncMonitor.default
     @Query private var processes: [DevProcess]
     
     @State var displayCloudStatusDetailSheet : Bool = false
     @State var addProcessSheet: Bool = false
-    @State private var hasPro: Bool = false
+
+    private var syncStatus: SyncMonitor.SyncSummaryStatus {
+        CloudKitSyncPresentation.summaryStatus(from: syncMonitor)
+    }
+
     var body: some View {
         NavigationStack {
             VStack {
@@ -90,10 +94,15 @@ struct ProcessView: View {
                 }
                     .toolbar {
                         ToolbarItem {
-                            Image(systemName: syncMonitor.syncStateSummary.symbolName)
-                                .foregroundColor(syncMonitor.syncStateSummary.symbolColor)
-                                .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolColor)
-                                .animation(.easeInOut, value: syncMonitor.syncStateSummary.symbolName)
+                            Button {
+                                displayCloudStatusDetailSheet = true
+                            } label: {
+                                Image(systemName: syncStatus.symbolName)
+                                    .foregroundColor(syncStatus.symbolColor)
+                            }
+                            .accessibilityLabel("iCloud sync status")
+                            .animation(.easeInOut, value: syncStatus.symbolColor)
+                            .animation(.easeInOut, value: syncStatus.symbolName)
                         }
                         ToolbarSpacer()
                         ToolbarItem(placement: .primaryAction){
@@ -111,41 +120,24 @@ struct ProcessView: View {
         
             
             .sheet(isPresented: $addProcessSheet) {
-                if processes.count >= 2 && !hasPro {
-                    UpsellView()
+                if processes.count >= UpsellContext.freeProcessLimit && !purchaseManager.hasPro {
+                    UpsellView(
+                        context: .processLimit(
+                            current: processes.count,
+                            max: UpsellContext.freeProcessLimit
+                        )
+                    )
                 } else {
                     AddProcessSheet()
                 }
             }
-            .onChange(of: addProcessSheet) { _, newValue in
-                if newValue {
-                    Task { @MainActor in
-                        self.hasPro = await hasPurchasedPro()
-                    }
-                }
-            }
             .task {
-                self.hasPro = await hasPurchasedPro()
+                await purchaseManager.refreshStoreState()
+            }
+            .sheet(isPresented: $displayCloudStatusDetailSheet) {
+                CloudKitSyncStatusSheet()
             }
 
-    }
-    
-    func hasPurchasedPro() async -> Bool {
-        for await result in Transaction.currentEntitlements {
-            switch result {
-            case .verified(let transaction):
-                let productId = transaction.productID
-                if productId == "pro" {
-                    if transaction.revocationDate != nil {
-                        return false
-                    }
-                    return true
-                }
-            case .unverified(_, _):
-                continue
-            }
-        }
-        return false
     }
 }
 
@@ -231,4 +223,5 @@ struct ProcessView: View {
 
     return ProcessView()
         .modelContainer(container)
+        .environmentObject(PurchaseManager())
 }

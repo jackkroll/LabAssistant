@@ -77,7 +77,7 @@ let ilfordBW = DevProcess(
 
 struct PresetView: View {
     @Environment(\.modelContext) private var modelContext
-    let publicDB = CKContainer(identifier: "iCloud.icloud.JackKroll.LabAssistant").publicCloudDatabase
+    let publicDB = CKContainer(identifier: LabAssistantLaunchConfiguration.cloudKitContainerIdentifier).publicCloudDatabase
     @Query private var ownProcesses: [DevProcess]
     @State private var fetchedProcesses: [DevProcess] = []
     @State private var showUploadSheet: Bool = false
@@ -160,8 +160,8 @@ struct PresetView: View {
                         let records = page.matchResults.compactMap { _, result in
                             try? result.get()
                         }
-                        let built = records.compactMap { DevProcess(record: $0) }
                         DispatchQueue.main.async {
+                            let built = records.compactMap { DevProcess(record: $0) }
                             self.fetchedProcesses.append(contentsOf: built)
                         }
                         // Fetch next page if available
@@ -179,9 +179,8 @@ struct PresetView: View {
                         let records = page.matchResults.compactMap { _, result in
                             try? result.get()
                         }
-                        let built = records.compactMap { DevProcess(record: $0) }
                         DispatchQueue.main.async {
-                            self.fetchedProcesses = built
+                            self.fetchedProcesses = records.compactMap { DevProcess(record: $0) }
                         }
                         // Fetch next page if available
                         if let next = page.queryCursor {
@@ -263,7 +262,7 @@ struct DownloadCard : View {
 }
 
 struct UploadSheet : View {
-    let publicDB = CKContainer(identifier: "iCloud.icloud.JackKroll.LabAssistant").publicCloudDatabase
+    let publicDB = CKContainer(identifier: LabAssistantLaunchConfiguration.cloudKitContainerIdentifier).publicCloudDatabase
     @Environment(\.dismiss) var dismiss
     @State private var uploadStatus: String? = nil
     @Query private var ownProcesses: [DevProcess]
@@ -336,7 +335,7 @@ struct UploadSheet : View {
         record["notes"] = process.notes as CKRecordValue
         record["uploadUser"] = try? await CKContainer.default().userRecordID().recordName as CKRecordValue
         let stepsArray: [SingleStep] = process.steps ?? []
-        if let data = try? JSONEncoder().encode(stepsArray) {
+        if let data = try? PresetStepSerialization.encodeSteps(stepsArray) {
             record["stepsData"] = data as CKRecordValue
         }
         return record

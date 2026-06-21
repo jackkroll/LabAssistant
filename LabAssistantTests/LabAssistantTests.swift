@@ -41,7 +41,7 @@ final class LabAssistantTests: XCTestCase {
         XCTAssertEqual(process.estTime, 120)
     }
 
-    func testSingleStepCodablePreservesNestedTimingData() throws {
+    func testPresetStepSerializationPreservesNestedTimingData() throws {
         let substep = SubstepProcess(title: "Agitation", duration: 15, gap: 45)
         let preset = TemperatureDuration(temperature: 20, units: .celsius, duration: 540)
         let original = SingleStep(
@@ -58,8 +58,8 @@ final class LabAssistantTests: XCTestCase {
             tempDuration: [preset]
         )
 
-        let data = try JSONEncoder().encode(original)
-        let decoded = try JSONDecoder().decode(SingleStep.self, from: data)
+        let data = try PresetStepSerialization.encodeSteps([original])
+        let decoded = PresetStepSerialization.decodeSteps(from: data).first!
 
         XCTAssertEqual(decoded.title, original.title)
         XCTAssertEqual(decoded.index, original.index)

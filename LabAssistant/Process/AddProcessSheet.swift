@@ -29,6 +29,8 @@ struct AddProcessSheet: View {
                         } else {
                             
                             ForEach($process.sortedSteps) { step in
+                                let stepID = step.wrappedValue.id
+                                let stepPosition = process.stepPosition(for: stepID) ?? 0
                                 NavigationStack {
                                     HStack {
                                         TextField("Step title", text: step.title)
@@ -47,15 +49,10 @@ struct AddProcessSheet: View {
                                         .buttonStyle(.borderedProminent)
                                         
                                         Button {
-                                            if step.index.wrappedValue - 1 >= 0 {
-                                                withAnimation {
-                                                    process.sortedSteps[step.index.wrappedValue - 1].index = step.index.wrappedValue
-                                                    process.sortedSteps[step.index.wrappedValue].index = step.index.wrappedValue - 1
-                                                    save()
-                                                    process.sortedSteps = process.sortedSteps
-                                                }
+                                            withAnimation {
+                                                process.moveStep(withID: stepID, by: -1)
+                                                save()
                                             }
-                                            
                                         }
                                         label: {
                                             Image(systemName: "arrow.up.circle.fill")
@@ -65,19 +62,14 @@ struct AddProcessSheet: View {
                                                 .frame(width: 30, height: 30)
                                         }
                                         .buttonStyle(.borderless)
-                                        .disabled(step.index.wrappedValue == 0)
+                                        .disabled(stepPosition == 0)
                                         
                                         
                                         Button {
-                                            if step.index.wrappedValue + 1 <= process.sortedSteps.count - 1 {
-                                                withAnimation {
-                                                    process.sortedSteps[step.index.wrappedValue + 1].index = step.index.wrappedValue
-                                                    process.sortedSteps[step.index.wrappedValue].index = step.index.wrappedValue + 1
-                                                    save()
-                                                    process.sortedSteps = process.sortedSteps
-                                                }
+                                            withAnimation {
+                                                process.moveStep(withID: stepID, by: 1)
+                                                save()
                                             }
-                                            
                                         } label: {
                                             Image(systemName: "arrow.down.circle.fill")
                                                 .symbolRenderingMode(.hierarchical)
@@ -86,20 +78,12 @@ struct AddProcessSheet: View {
                                                 .frame(width: 30, height: 30)
                                         }
                                         .buttonStyle(.borderless)
-                                        .disabled(step.index.wrappedValue == process.sortedSteps.count - 1)
+                                        .disabled(stepPosition >= process.sortedSteps.count - 1)
                                         
                                         Spacer()
                                         Button(role: .destructive) {
                                             withAnimation {
-                                                process.steps!.removeAll(where: { $0.id == step.id })
-                                                if process.steps!.count > 0 {
-                                                    var newIndex = 0
-                                                    for step in process.sortedSteps {
-                                                        step.index = newIndex
-                                                        newIndex += 1
-                                                    }
-                                                    
-                                                }
+                                                process.removeStep(withID: stepID)
                                                 save()
                                             }
                                         } label: {
@@ -127,16 +111,7 @@ struct AddProcessSheet: View {
                         
                         Button {
                             withAnimation {
-                                let newStep = SingleStep(
-                                    title: "Untitled",
-                                    index: process.steps!.count,
-                                    notes: "",
-                                    autoAdvance: true,
-                                    associatedChemicals: [],
-                                    totalDuration: nil,
-                                    substep: nil)
-                                process.steps!.append(newStep)
-                                print("add")
+                                process.appendUntitledStep()
                             }
                             save()
                         } label: {
@@ -172,10 +147,20 @@ struct AddProcessSheet: View {
     }
     
     private func binding(for step: SingleStep) -> Binding<SingleStep>? {
-        guard let idx = process.sortedSteps.firstIndex(where: { $0.id == step.id }) else { return nil }
-        return Binding<SingleStep>(
-            get: { process.sortedSteps[idx] },
-            set: { process.sortedSteps[idx] = $0 }
+        guard process.sortedSteps.contains(where: { $0.id == step.id }) else { return nil }
+
+        let stepID = step.id
+        return Binding(
+            get: {
+                guard let idx = process.sortedSteps.firstIndex(where: { $0.id == stepID }) else {
+                    return step
+                }
+                return process.sortedSteps[idx]
+            },
+            set: { newValue in
+                guard let idx = process.sortedSteps.firstIndex(where: { $0.id == stepID }) else { return }
+                process.sortedSteps[idx] = newValue
+            }
         )
     }
 }

@@ -36,7 +36,7 @@ struct ChemicalDetailView: View {
                     VStack(alignment: .leading) {
                         Text("Capacity")
                             .font(.callout).foregroundStyle(.secondary)
-                        Gauge(value: chemical.current, in: 0...chemical.max) {
+                        Gauge(value: chemical.current, in: chemicalGaugeRange(current: chemical.current, maximum: chemical.max)) {
                             Label {
                                 Text("\(Int(chemical.current))/\(Int(chemical.max)) \(chemical.units.rawValue)")
                             } icon: { Image(systemName: "flask") }
