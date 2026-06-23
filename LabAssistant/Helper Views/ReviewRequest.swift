@@ -9,11 +9,13 @@ import SwiftUI
 import StoreKit
 
 struct ReviewRequest: View {
-    @Environment(\.requestReview) var requestReview
+    @Environment(\.requestReview) private var requestReview
+    @EnvironmentObject private var promotionBannerManager: PromotionBannerManager
+
     var body: some View {
             VStack {
                 HStack {
-                    ForEach(0..<5) { num in
+                    ForEach(0..<5) { _ in
                         Image(systemName: "star.fill")
                             .resizable()
                             .frame(width: 20, height: 20)
@@ -24,6 +26,7 @@ struct ReviewRequest: View {
                     .bold()
                 HStack {
                     Button {
+                        promotionBannerManager.handleReviewAccepted()
                         requestReview()
                     } label: {
                         Text("Yes")
@@ -32,7 +35,7 @@ struct ReviewRequest: View {
                     .buttonStyle(.glass)
                     
                     Button {
-                        
+                        promotionBannerManager.handleReviewDeclined()
                     } label: {
                         Text("No")
                     }
@@ -46,10 +49,10 @@ struct ReviewRequest: View {
             .overlay(alignment: .topTrailing) {
                 Menu {
                     Button("Close") {
-                        
+                        promotionBannerManager.dismissBanner(.review, action: .close)
                     }
-                    Button("Silence for a while") {
-                        
+                    Button("Show less often") {
+                        promotionBannerManager.dismissBanner(.review, action: .showLessOften)
                     }
                 } label: {
                     Image(systemName: "xmark.circle.fill")
@@ -69,6 +72,8 @@ struct ReviewRequest: View {
 }
 
 struct ProBanner: View {
+    @EnvironmentObject private var promotionBannerManager: PromotionBannerManager
+
     var body: some View {
         NavigationLink {
             UpsellView(context: .presets)
@@ -79,6 +84,8 @@ struct ProBanner: View {
                     .bold()
                 HStack {
                     Text("Unlock unlimited workflows and new tools to speed up your setup")
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(.secondary)
                 }
             }
         }
@@ -86,19 +93,20 @@ struct ProBanner: View {
         .overlay(alignment: .topTrailing) {
             Menu {
                 Button("Close") {
-                    
+                    promotionBannerManager.dismissBanner(.pro, action: .close)
                 }
-                Button("Silence for a while") {
-                    
+                Button("Show less often") {
+                    promotionBannerManager.dismissBanner(.pro, action: .showLessOften)
                 }
             } label: {
                 Image(systemName: "xmark.circle.fill")
                     .symbolRenderingMode(.hierarchical)
                     .resizable()
                     .frame(width: 20, height: 20)
+                    .padding()
             }
         }
-        //.frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity)
         .background(.red.gradient)
         .glassEffect(in: ConcentricRectangle(corners: .concentric(minimum: 32), isUniform: true))
         .foregroundStyle(.white)
@@ -107,7 +115,7 @@ struct ProBanner: View {
     }
 }
 
-#Preview {
+#Preview("Banner appearance") {
     NavigationStack {
         VStack  {
             ReviewRequest()
@@ -115,4 +123,5 @@ struct ProBanner: View {
             Spacer()
         }
     }
+    .environmentObject(PromotionBannerManager())
 }

@@ -28,6 +28,34 @@ enum LabAssistantLaunchConfiguration {
         ProcessInfo.processInfo.arguments.contains(uiTestingExampleDataArgument)
     }
 
+#if DEBUG
+    static let debugShowReviewBannerArgument = "-debug-show-review-banner"
+    static let debugShowProBannerArgument = "-debug-show-pro-banner"
+    static let debugResetPromotionMetricsArgument = "-debug-reset-promotion-metrics"
+    static let debugSeedReviewEligibleArgument = "-debug-seed-review-eligible"
+    static let debugSeedProEligibleArgument = "-debug-seed-pro-eligible"
+
+    static var debugShowReviewBanner: Bool {
+        ProcessInfo.processInfo.arguments.contains(debugShowReviewBannerArgument)
+    }
+
+    static var debugShowProBanner: Bool {
+        ProcessInfo.processInfo.arguments.contains(debugShowProBannerArgument)
+    }
+
+    static var debugResetPromotionMetrics: Bool {
+        ProcessInfo.processInfo.arguments.contains(debugResetPromotionMetricsArgument)
+    }
+
+    static var debugSeedReviewEligible: Bool {
+        ProcessInfo.processInfo.arguments.contains(debugSeedReviewEligibleArgument)
+    }
+
+    static var debugSeedProEligible: Bool {
+        ProcessInfo.processInfo.arguments.contains(debugSeedProEligibleArgument)
+    }
+#endif
+
     static let cloudKitContainerIdentifier = "iCloud.icloud.JackKroll.LabAssistant"
 
     static let schema = Schema([
@@ -242,6 +270,7 @@ struct ModelContainerErrorView: View {
 struct LabAssistantApp: App {
     @StateObject private var modelStore = ModelStore()
     @StateObject private var purchaseManager = PurchaseManager()
+    @StateObject private var promotionBannerManager = PromotionBannerManager()
 
     @ViewBuilder
     private var rootContent: some View {
@@ -280,6 +309,16 @@ struct LabAssistantApp: App {
                 }
             }
             .environmentObject(purchaseManager)
+            .environmentObject(promotionBannerManager)
+            .onAppear {
+                #if DEBUG
+                promotionBannerManager.applyDebugMetricsConfigurationIfNeeded()
+                #endif
+                promotionBannerManager.recordAppLaunchIfNeeded()
+                #if DEBUG
+                promotionBannerManager.applyDebugBannerOverrideIfNeeded()
+                #endif
+            }
         }
     }
 }

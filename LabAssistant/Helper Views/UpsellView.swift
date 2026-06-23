@@ -20,7 +20,6 @@ struct UpsellView: View {
     @State private var errorMessage: String?
 
     var body: some View {
-        NavigationStack {
             ScrollView {
                 header
                 features
@@ -28,6 +27,8 @@ struct UpsellView: View {
             .contentMargins(.horizontal, 16, for: .scrollContent)
             .scrollIndicators(.hidden)
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar(.hidden, for: .tabBar)
+            .navigationBarBackButtonHidden()
             .safeAreaInset(edge: .bottom) {
                 VStack(spacing: 8) {
                     purchaseSection
@@ -51,7 +52,6 @@ struct UpsellView: View {
             } message: {
                 Text(errorMessage ?? "")
             }
-        }
     }
 
     private var header: some View {

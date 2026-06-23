@@ -19,6 +19,7 @@ private struct PresetsSheetContext: Identifiable {
 struct DevelopView: View {
     @Environment(\.horizontalSizeClass) var horizontalSizeClass
     @Environment(\.dismiss) var dismiss
+    @EnvironmentObject private var promotionBannerManager: PromotionBannerManager
     @State var selectedTab: Int = 0
     @State var timeRemaining : TimeInterval?
     
@@ -31,6 +32,7 @@ struct DevelopView: View {
     @State var isPaused : Bool = false
     @State private var presetsSheetContext: PresetsSheetContext? = nil
     @State private var lastTabForDurationChange: Int = -1
+    @State private var workflowSession: WorkflowSessionTracker?
     
     var currentStep : SingleStep? {
         let steps = process.sortedSteps
@@ -143,9 +145,11 @@ struct DevelopView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
            loadPage()
+           workflowSession = promotionBannerManager.startWorkflowSession(process: process)
         }
         .onChange(of: selectedTab) {
             loadPage()
+            updateWorkflowSessionProgress()
         }
         .onChange(of: currentStep?.totalDuration) { oldValue, newValue in
             guard let newTotal = newValue else { return }
@@ -169,6 +173,11 @@ struct DevelopView: View {
             timer?.invalidate()
             timer = nil
             UIApplication.shared.isIdleTimerDisabled = false
+            if var session = workflowSession {
+                session.reachedLastStep = session.reachedLastStep || isOnLastStep
+                promotionBannerManager.completeWorkflowSession(session)
+                workflowSession = nil
+            }
         }
         .tabViewStyle(PageTabViewStyle(indexDisplayMode: .never))
         .overlay(alignment: .topTrailing) {
@@ -285,6 +294,23 @@ struct DevelopView: View {
 	            
         }
 	    
+    private var isOnLastStep: Bool {
+        let steps = process.sortedSteps
+        guard !steps.isEmpty else { return false }
+        return clampedSelectedTab(for: steps) >= steps.count - 1
+    }
+
+    private func updateWorkflowSessionProgress() {
+        guard var session = workflowSession else { return }
+        let steps = process.sortedSteps
+        guard !steps.isEmpty else { return }
+
+        let selectedIndex = clampedSelectedTab(for: steps)
+        session.furthestStepIndex = max(session.furthestStepIndex, selectedIndex)
+        session.reachedLastStep = session.reachedLastStep || selectedIndex >= steps.count - 1
+        workflowSession = session
+    }
+
     private func clampedSelectedTab(for steps: [SingleStep]) -> Int {
         guard !steps.isEmpty else { return 0 }
         return min(max(selectedTab, 0), steps.count - 1)
@@ -463,6 +489,7 @@ extension TimeInterval {
         steps: steps
     )
     DevelopView(process: ilfordBW)
+        .environmentObject(PromotionBannerManager())
 }
 
 #Preview {
@@ -470,4 +497,5 @@ extension TimeInterval {
         nickname: "HP5+ in DD-X", steps: []
     )
     DevelopView(process: ilfordBW)
+        .environmentObject(PromotionBannerManager())
 }

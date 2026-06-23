@@ -117,4 +117,156 @@ final class LabAssistantTests: XCTestCase {
 
         XCTAssertEqual(left, right)
     }
+
+    func testWorkflowEngagementRejectsFastCompletion() {
+        XCTAssertFalse(
+            WorkflowEngagement.isLegitimateCompletion(
+                stepCount: 4,
+                estimatedDuration: 600,
+                elapsed: 5,
+                furthestStepIndex: 3,
+                reachedLastStep: true
+            )
+        )
+    }
+
+    func testWorkflowEngagementAcceptsReasonableCompletion() {
+        XCTAssertTrue(
+            WorkflowEngagement.isLegitimateCompletion(
+                stepCount: 4,
+                estimatedDuration: 600,
+                elapsed: 60,
+                furthestStepIndex: 3,
+                reachedLastStep: true
+            )
+        )
+    }
+
+    func testWorkflowEngagementRequiresReachingFinalStep() {
+        XCTAssertFalse(
+            WorkflowEngagement.isLegitimateCompletion(
+                stepCount: 4,
+                estimatedDuration: 600,
+                elapsed: 120,
+                furthestStepIndex: 1,
+                reachedLastStep: false
+            )
+        )
+    }
+
+    func testPromotionBannerPolicySuppressesReviewAfterAcceptance() {
+        var metrics = PromotionBannerMetrics()
+        metrics.reviewRequestedAt = Date()
+
+        XCTAssertNil(
+            PromotionBannerPolicy.activeBanner(
+                metrics: metrics,
+                processCount: 2,
+                hasPro: false,
+                moment: .sessionStart,
+                now: Date()
+            )
+        )
+    }
+
+    func testPromotionBannerPolicyShowsReviewOnHopInForReturningUsers() {
+        let metrics = PromotionBannerMetrics(
+            visitCount: 3,
+            legitimateCompletionCount: 2
+        )
+
+        XCTAssertEqual(
+            PromotionBannerPolicy.activeBanner(
+                metrics: metrics,
+                processCount: 1,
+                hasPro: false,
+                moment: .sessionStart,
+                now: Date()
+            ),
+            .review
+        )
+    }
+
+    func testPromotionBannerPolicyShowsReviewWhenLeavingAfterLegitimateWorkflow() {
+        let metrics = PromotionBannerMetrics(visitCount: 1)
+
+        XCTAssertEqual(
+            PromotionBannerPolicy.reviewBannerIfEligible(
+                metrics: metrics,
+                moment: .sessionEnd(completedLegitimately: true),
+                now: Date()
+            ),
+            .review
+        )
+    }
+
+    func testPromotionBannerPolicyDoesNotShowReviewOnHopInForFirstVisit() {
+        let metrics = PromotionBannerMetrics(visitCount: 1)
+
+        XCTAssertNil(
+            PromotionBannerPolicy.reviewBannerIfEligible(
+                metrics: metrics,
+                moment: .sessionStart,
+                now: Date()
+            )
+        )
+    }
+
+    func testPromotionBannerPolicyDoesNotShowReviewWhenLeavingWithoutCompleting() {
+        let metrics = PromotionBannerMetrics(visitCount: 2, legitimateCompletionCount: 1)
+
+        XCTAssertNil(
+            PromotionBannerPolicy.reviewBannerIfEligible(
+                metrics: metrics,
+                moment: .sessionEnd(completedLegitimately: false),
+                now: Date()
+            )
+        )
+    }
+
+    func testPromotionEngagementShortensDismissCooldownsAfterMoreCompletions() {
+        let newer = PromotionBannerMetrics(visitCount: 2, legitimateCompletionCount: 1)
+        let experienced = PromotionBannerMetrics(visitCount: 5, legitimateCompletionCount: 4)
+
+        XCTAssertGreaterThan(
+            PromotionBannerPolicy.closeDismissCooldownDays(for: newer, moment: .sessionStart),
+            PromotionBannerPolicy.closeDismissCooldownDays(for: experienced, moment: .sessionStart)
+        )
+    }
+
+    func testPromotionBannerPolicyHidesProBannerForProUsers() {
+        let metrics = PromotionBannerMetrics(visitCount: 3)
+
+        XCTAssertNil(
+            PromotionBannerPolicy.activeBanner(
+                metrics: metrics,
+                processCount: 2,
+                hasPro: true,
+                moment: .sessionStart,
+                now: Date()
+            )
+        )
+    }
+
+    func testPromotionBannerPolicyHonorsShowLessOftenForProBanner() {
+        let now = Date()
+        let metrics = PromotionBannerMetrics(
+            visitCount: 3,
+            proLessOftenUntil: Calendar.current.date(
+                byAdding: .day,
+                value: PromotionBannerPolicy.showLessOftenCooldownDays(for: PromotionBannerMetrics(visitCount: 3)),
+                to: now
+            )
+        )
+
+        XCTAssertNil(
+            PromotionBannerPolicy.activeBanner(
+                metrics: metrics,
+                processCount: 2,
+                hasPro: false,
+                moment: .sessionStart,
+                now: now
+            )
+        )
+    }
 }

@@ -12,6 +12,7 @@ import CloudKitSyncMonitor
 struct ProcessView: View {
     @Environment(\.modelContext) private var modelContext
     @EnvironmentObject private var purchaseManager: PurchaseManager
+    @EnvironmentObject private var promotionBannerManager: PromotionBannerManager
     @StateObject private var syncMonitor = SyncMonitor.default
     @Query private var processes: [DevProcess]
     
@@ -25,6 +26,16 @@ struct ProcessView: View {
     var body: some View {
         NavigationStack {
             VStack {
+                if let activeBanner = promotionBannerManager.activeBanner {
+                    PromotionBannerSlot(banner: activeBanner)
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .move(edge: .top).combined(with: .opacity)
+                            )
+                        )
+                }
+
                 if processes.count == 0 {
                     ContentUnavailableView {
                         Label("No processes saved", systemImage: "flask")
@@ -134,10 +145,43 @@ struct ProcessView: View {
             .task {
                 await purchaseManager.refreshStoreState()
             }
+            .onAppear {
+                refreshPromotionBanner()
+            }
+            .onChange(of: processes.count) {
+                refreshPromotionBanner()
+            }
+            .onChange(of: purchaseManager.hasPro) {
+                refreshPromotionBanner()
+            }
             .sheet(isPresented: $displayCloudStatusDetailSheet) {
                 CloudKitSyncStatusSheet()
             }
+            .animation(.spring(duration: 0.42, bounce: 0.12), value: promotionBannerManager.activeBanner)
 
+    }
+
+    private func refreshPromotionBanner() {
+        promotionBannerManager.recomputeActiveBanner(
+            processCount: processes.count,
+            hasPro: purchaseManager.hasPro,
+            moment: .sessionStart
+        )
+    }
+}
+
+private struct PromotionBannerSlot: View {
+    let banner: PromotionBanner
+
+    var body: some View {
+        Group {
+            switch banner {
+            case .review:
+                ReviewRequest()
+            case .pro:
+                ProBanner()
+            }
+        }
     }
 }
 
@@ -224,4 +268,5 @@ struct ProcessView: View {
     return ProcessView()
         .modelContainer(container)
         .environmentObject(PurchaseManager())
+        .environmentObject(PromotionBannerManager())
 }
